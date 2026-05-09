@@ -551,21 +551,29 @@ function SummaryBlock({ summary, setSummary, editing, setEditing, reviewed, setR
   );
 }
 
-function FieldCard({ field, expanded, onToggleSource, onConfirm, diff }: {
-  field: Field; expanded: boolean; onToggleSource: () => void; onConfirm: () => void; diff?: boolean;
+function FieldCard({ field, position, total, expanded, onToggleSource, onConfirm, diff }: {
+  field: Field; position: number; total: number; expanded: boolean; onToggleSource: () => void; onConfirm: () => void; diff?: boolean;
 }) {
   const dot = field.confidence === "high" ? "bg-success" : field.confidence === "med" ? "bg-warning" : "bg-destructive";
   const dotLabel = field.confidence === "high" ? "High confidence" : field.confidence === "med" ? "Medium confidence" : "Low confidence";
   return (
     <div
       className={cn(
-        "bg-card border border-border rounded transition-all",
+        "bg-card border border-border rounded transition-all relative",
         field.confirmed && "border-l-4 border-l-success",
         diff && "ring-2 ring-primary/50 bg-accent/30"
       )}
     >
+      <span
+        className={cn(
+          "absolute top-2 right-3 font-mono text-[10px] tabular-nums",
+          field.confirmed ? "text-success" : "text-muted-foreground"
+        )}
+      >
+        {position} of {total}
+      </span>
       <div className="p-3 flex items-start gap-3">
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 pr-12">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{field.label}</span>
             <span className={cn("w-2 h-2 rounded-full", dot)} title={dotLabel} />
@@ -573,10 +581,10 @@ function FieldCard({ field, expanded, onToggleSource, onConfirm, diff }: {
               <Video className="w-2.5 h-2.5" /> From your call
             </span>
             {!field.confirmed && !diff && (
-              <span className="text-[10px] font-bold text-warning-foreground bg-[#FFF7E6] border border-warning/40 px-1.5 py-0.5 rounded ml-auto">Draft</span>
+              <span className="text-[10px] font-bold text-warning-foreground bg-[#FFF7E6] border border-warning/40 px-1.5 py-0.5 rounded">Draft</span>
             )}
             {diff && (
-              <span className="text-[10px] font-bold text-primary bg-accent border border-primary/30 px-1.5 py-0.5 rounded ml-auto">Voice update</span>
+              <span className="text-[10px] font-bold text-primary bg-accent border border-primary/30 px-1.5 py-0.5 rounded">Voice update</span>
             )}
           </div>
           <div className="text-[14px] text-foreground mt-1">{field.value}</div>
