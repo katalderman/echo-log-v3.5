@@ -220,7 +220,21 @@ export default function Complete() {
               </div>
 
               {/* Team queue nudge */}
-              {!isHistory && (
+              {!isHistory && queueState === "empty" ? (
+                <div className="bg-card border border-l-4 border-l-success border-border rounded p-5 text-center">
+                  <div className="w-9 h-9 rounded-full bg-success/10 border border-success/30 grid place-items-center mx-auto mb-2">
+                    <CheckCircle2 className="w-5 h-5 text-success" />
+                  </div>
+                  <div className="text-[13px] font-semibold">You're all caught up.</div>
+                  <div className="text-[12px] text-muted-foreground mt-0.5">0 calls awaiting review. Your pipeline data is current.</div>
+                  <button
+                    onClick={() => navigate("/calls/history")}
+                    className="mt-3 text-[12px] text-primary hover:underline font-medium"
+                  >
+                    Browse previous calls
+                  </button>
+                </div>
+              ) : !isHistory && (
                 <div className="bg-card border border-border rounded">
                   <div className="px-3 py-2 border-b border-border flex items-center justify-between">
                     <div className="text-[13px] font-semibold flex items-center gap-1.5">
