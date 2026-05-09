@@ -240,7 +240,7 @@ export default function Complete() {
 
               {/* Read-only fields */}
               <div className="space-y-2">
-                {CONFIRMED_FIELDS.map((f) => (
+                {displayedFields.map((f) => (
                   <div key={f.label} className="bg-card border border-l-4 border-l-success border-border rounded p-3 opacity-95">
                     <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">
@@ -249,9 +249,16 @@ export default function Complete() {
                           <span className="text-[10px] bg-success/10 border border-success/30 text-success font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
                             <Check className="w-2.5 h-2.5" /> Synced
                           </span>
+                          {f.edited && (
+                            <span className="text-[10px] bg-primary/10 border border-primary/30 text-primary font-bold px-1.5 py-0.5 rounded">
+                              Edited in sync
+                            </span>
+                          )}
                         </div>
                         <div className="text-[14px] mt-1">{f.value}</div>
-                        <div className="text-[11px] text-muted-foreground mt-1.5 italic">— {f.source}</div>
+                        {f.source && (
+                          <div className="text-[11px] text-muted-foreground mt-1.5 italic">— {f.source}</div>
+                        )}
                       </div>
                       <a className="text-muted-foreground hover:text-primary p-1 cursor-pointer" title="View in Salesforce">
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -259,6 +266,24 @@ export default function Complete() {
                     </div>
                   </div>
                 ))}
+                {skippedFields.length > 0 && (
+                  <div className="bg-card border border-l-4 border-l-border border-border rounded p-3 opacity-80">
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-2">
+                      Skipped — not synced ({skippedFields.length})
+                    </div>
+                    <div className="space-y-1.5">
+                      {skippedFields.map((f) => (
+                        <div key={f.key} className="flex items-start gap-2 text-[12px]">
+                          <RefreshCw className="w-3 h-3 mt-0.5 shrink-0 text-muted-foreground" />
+                          <div className="flex-1">
+                            <span className="font-medium text-foreground">{f.label}</span>
+                            <span className="text-muted-foreground line-through ml-2">{f.value}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Team queue nudge */}
