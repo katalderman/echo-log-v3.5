@@ -15,14 +15,24 @@ export default function ActiveCall() {
   const [elapsed, setElapsed] = useState(8 * 60);
   const [note, setNote] = useState("");
   const [muted, setMuted] = useState(false);
+  const [briefState, setBriefState] = useState<ScreenState>("loading");
+  const [showQuickNote, setShowQuickNote] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setElapsed((s) => s + 1), 1000);
     return () => clearInterval(t);
   }, []);
 
+  // Loading state must hold for at least 600ms even if "fetch" is instant.
+  useEffect(() => {
+    if (briefState !== "loading") return;
+    const t = window.setTimeout(() => setBriefState("normal"), 900);
+    return () => clearTimeout(t);
+  }, [briefState]);
+
   const mins = Math.floor(elapsed / 60);
   const secs = (elapsed % 60).toString().padStart(2, "0");
+  const zoomDropped = briefState === "error";
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
