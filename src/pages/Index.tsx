@@ -126,10 +126,7 @@ const Index = () => {
     setFields((arr) => arr.map((f) => (f.key === k ? { ...f, confirmed: !f.confirmed } : f)));
   };
   const confirmAll = () => {
-    if (!summaryReviewed) {
-      toast("Review the AI summary first", { description: "Click anywhere in the summary to mark it reviewed." });
-      return;
-    }
+    setSummaryReviewed(true);
     setFields((arr) => arr.map((f) => ({ ...f, confirmed: true })));
     setPathStep(3);
     toast.success("All 7 fields confirmed");
