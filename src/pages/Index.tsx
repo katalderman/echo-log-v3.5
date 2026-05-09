@@ -425,11 +425,6 @@ function PathBar({ step }: { step: number }) {
     </div>
   );
 }
-        Mark Status as Complete
-      </button>
-    </div>
-  );
-}
 
 // ============================================================================
 // Left column — About this Call
