@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   Phone, CheckCircle2, Check, ExternalLink, Video, Quote, ChevronDown, ChevronRight,
-  ArrowLeft, ArrowRight, Sparkles,
+  ArrowLeft, ArrowRight, Sparkles, AlertTriangle, RefreshCw,
 } from "lucide-react";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/pulse/Shell";
+import { StateControls, Skeleton, ScreenState } from "@/components/pulse/StateControls";
 import { cn } from "@/lib/utils";
 import { CONFIRMED_FIELDS, REVIEW_QUEUE, PREVIOUS_CALLS } from "@/data/calls";
 
@@ -14,6 +15,16 @@ export default function Complete() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [secAgo, setSecAgo] = useState(2);
+  const [pipelineState, setPipelineState] = useState<ScreenState>("loading");
+  const [queueState, setQueueState] = useState<ScreenState>("normal");
+  const [verifyState, setVerifyState] = useState<ScreenState>("normal");
+
+  // pipeline-push skeleton resolves to live in 1s
+  useEffect(() => {
+    if (pipelineState !== "loading") return;
+    const t = window.setTimeout(() => setPipelineState("normal"), 1000);
+    return () => clearTimeout(t);
+  }, [pipelineState]);
 
   // history mode if id matches a previous call
   const previous = PREVIOUS_CALLS.find((c) => c.id === id);
@@ -47,6 +58,31 @@ export default function Complete() {
         />
 
         <main className="flex-1 px-6 py-4 space-y-4">
+          {!isHistory && (
+            <div className="flex justify-end gap-2 flex-wrap">
+              <StateControls
+                value={pipelineState}
+                onChange={setPipelineState}
+                label="Pipeline push"
+                options={["loading", "normal"]}
+                optionLabels={{ loading: "Loading", normal: "Live" }}
+              />
+              <StateControls
+                value={queueState}
+                onChange={setQueueState}
+                label="Review queue"
+                options={["normal", "empty"]}
+                optionLabels={{ normal: "3 calls", empty: "Empty" }}
+              />
+              <StateControls
+                value={verifyState}
+                onChange={setVerifyState}
+                label="Verification"
+                options={["normal", "error"]}
+                optionLabels={{ normal: "OK", error: "Timeout" }}
+              />
+            </div>
+          )}
           {/* Record header — success state */}
           <div className="bg-card border border-border rounded p-4 flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-success grid place-items-center shrink-0">
@@ -113,6 +149,20 @@ export default function Complete() {
             </div>
           )}
 
+          {/* Verification timeout — observability gap, not a transaction failure */}
+          {!isHistory && verifyState === "error" && (
+            <div className="bg-warning/10 border border-l-4 border-l-warning border-warning/40 rounded px-4 py-2.5 flex items-center gap-4 text-[12px]">
+              <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
+              <div className="flex-1">
+                <span className="font-semibold">Synced, but verification timed out.</span>
+                <span className="text-muted-foreground"> Open the contact in Salesforce to confirm fields landed correctly.</span>
+              </div>
+              <a className="text-primary font-medium hover:underline shrink-0 flex items-center gap-1 cursor-pointer">
+                Open in Salesforce <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          )}
+
           <div className="grid grid-cols-12 gap-4">
             {/* Left: About */}
             <div className="col-span-3">
@@ -170,7 +220,21 @@ export default function Complete() {
               </div>
 
               {/* Team queue nudge */}
-              {!isHistory && (
+              {!isHistory && queueState === "empty" ? (
+                <div className="bg-card border border-l-4 border-l-success border-border rounded p-5 text-center">
+                  <div className="w-9 h-9 rounded-full bg-success/10 border border-success/30 grid place-items-center mx-auto mb-2">
+                    <CheckCircle2 className="w-5 h-5 text-success" />
+                  </div>
+                  <div className="text-[13px] font-semibold">You're all caught up.</div>
+                  <div className="text-[12px] text-muted-foreground mt-0.5">0 calls awaiting review. Your pipeline data is current.</div>
+                  <button
+                    onClick={() => navigate("/calls/history")}
+                    className="mt-3 text-[12px] text-primary hover:underline font-medium"
+                  >
+                    Browse previous calls
+                  </button>
+                </div>
+              ) : !isHistory && (
                 <div className="bg-card border border-border rounded">
                   <div className="px-3 py-2 border-b border-border flex items-center justify-between">
                     <div className="text-[13px] font-semibold flex items-center gap-1.5">
@@ -203,42 +267,64 @@ export default function Complete() {
 
             {/* Right: Pipeline preview */}
             <div className="col-span-3 space-y-4">
-              <div className="bg-card border border-border rounded text-[12px]">
-                <div className="px-3 py-2 border-b border-border">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[13px] font-semibold">Pipeline Review Preview</span>
-                    <span className="text-[10px] font-bold text-success bg-success/10 border border-success/30 px-1.5 py-0.5 rounded whitespace-nowrap">
-                      ✓ NOW LIVE
-                    </span>
+              {pipelineState === "loading" && !isHistory ? (
+                <div className="bg-card border border-border rounded text-[12px]">
+                  <div className="px-3 py-2 border-b border-border">
+                    <div className="text-[13px] font-semibold flex items-center gap-1.5">
+                      <RefreshCw className="w-3 h-3 animate-spin text-primary" /> Pushing to manager dashboard…
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">Field summary going live.</div>
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Live in Manager Dashboard.</div>
-                </div>
-                <div className="p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground text-[11px]">Northwind Robotics</span>
-                    <span className="font-semibold num">$72,000</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground">Stage</span>
-                    <span>Qualification → Security Review</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground">Close</span>
-                    <span>Jun 30, 2026 (Q2)</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground">Confidence</span>
-                    <span className="text-success font-medium">High — exec sponsor</span>
-                  </div>
-                  <div className="border-t border-border pt-2 mt-2">
-                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Latest call snapshot</div>
-                    <div className="text-[11px] leading-snug">Qualified. CFO Marcus Lee owns budget. Procurement 60 days. Blockers: SSO/audit, Pipedrive migration.</div>
-                  </div>
-                  <div className="bg-info border border-info-border rounded px-2 py-1.5 text-[10px] text-primary mt-2 flex items-center gap-1.5">
-                    <Check className="w-3 h-3" /> Pushed to team's pipeline view
+                  <div className="p-3 space-y-2">
+                    <Skeleton className="h-3 w-3/4" />
+                    <Skeleton className="h-3 w-2/3" />
+                    <Skeleton className="h-3 w-4/5" />
+                    <Skeleton className="h-3 w-1/2" />
+                    <div className="border-t border-border pt-2 mt-2 space-y-1.5">
+                      <Skeleton className="h-2.5 w-1/3" />
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-[88%]" />
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-card border border-border rounded text-[12px]">
+                  <div className="px-3 py-2 border-b border-border">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[13px] font-semibold">Pipeline Review Preview</span>
+                      <span className="text-[10px] font-bold text-success bg-success/10 border border-success/30 px-1.5 py-0.5 rounded whitespace-nowrap">
+                        ✓ LIVE IN MANAGER DASHBOARD
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">Live in Manager Dashboard.</div>
+                  </div>
+                  <div className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground text-[11px]">Northwind Robotics</span>
+                      <span className="font-semibold num">$72,000</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground">Stage</span>
+                      <span>Qualification → Security Review</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground">Close</span>
+                      <span>Jun 30, 2026 (Q2)</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground">Confidence</span>
+                      <span className="text-success font-medium">High — exec sponsor</span>
+                    </div>
+                    <div className="border-t border-border pt-2 mt-2">
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Latest call snapshot</div>
+                      <div className="text-[11px] leading-snug">Qualified. CFO Marcus Lee owns budget. Procurement 60 days. Blockers: SSO/audit, Pipedrive migration.</div>
+                    </div>
+                    <div className="bg-info border border-info-border rounded px-2 py-1.5 text-[10px] text-primary mt-2 flex items-center gap-1.5">
+                      <Check className="w-3 h-3" /> Pushed to team's pipeline view
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </main>

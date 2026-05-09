@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Phone, Video, MicOff, ChevronDown, ChevronRight, Check, FileText, Sparkles, Zap, Pause } from "lucide-react";
+import {
+  Phone, Video, MicOff, ChevronDown, ChevronRight, Check, FileText, Sparkles, Zap,
+  Lightbulb, AlertTriangle, RefreshCw,
+} from "lucide-react";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/pulse/Shell";
+import { StateControls, Skeleton, ScreenState } from "@/components/pulse/StateControls";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Call In Progress", "Call Ended", "AI Drafting", "Ready for Review", "Confirmed", "Synced"];
@@ -11,14 +15,24 @@ export default function ActiveCall() {
   const [elapsed, setElapsed] = useState(8 * 60);
   const [note, setNote] = useState("");
   const [muted, setMuted] = useState(false);
+  const [briefState, setBriefState] = useState<ScreenState>("loading");
+  const [showQuickNote, setShowQuickNote] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setElapsed((s) => s + 1), 1000);
     return () => clearInterval(t);
   }, []);
 
+  // Loading state must hold for at least 600ms even if "fetch" is instant.
+  useEffect(() => {
+    if (briefState !== "loading") return;
+    const t = window.setTimeout(() => setBriefState("normal"), 900);
+    return () => clearTimeout(t);
+  }, [briefState]);
+
   const mins = Math.floor(elapsed / 60);
   const secs = (elapsed % 60).toString().padStart(2, "0");
+  const zoomDropped = briefState === "error";
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
@@ -32,16 +46,29 @@ export default function ActiveCall() {
         />
 
         <main className="flex-1 px-6 py-4 space-y-4">
+          <div className="flex justify-end">
+            <StateControls value={briefState} onChange={setBriefState} />
+          </div>
+
           {/* Record header */}
           <div className="bg-card border border-border rounded p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-teal grid place-items-center shrink-0 relative">
+            <div className={cn(
+              "w-12 h-12 rounded-full grid place-items-center shrink-0 relative",
+              zoomDropped ? "bg-warning" : "bg-teal"
+            )}>
               <Phone className="w-5 h-5 text-white" />
-              <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-teal border-2 border-card animate-pulse" />
+              <span className={cn(
+                "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card",
+                zoomDropped ? "bg-warning" : "bg-teal animate-pulse"
+              )} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[11px] uppercase tracking-wide font-semibold flex items-center gap-1.5" style={{ color: "hsl(var(--teal))" }}>
-                <span className="w-2 h-2 rounded-full bg-teal animate-pulse" />
-                Active Call · Connected to Zoom
+              <div
+                className="text-[11px] uppercase tracking-wide font-semibold flex items-center gap-1.5"
+                style={{ color: zoomDropped ? "hsl(var(--warning))" : "hsl(var(--teal))" }}
+              >
+                <span className={cn("w-2 h-2 rounded-full", zoomDropped ? "bg-warning" : "bg-teal animate-pulse")} />
+                {zoomDropped ? "Active Call · Zoom Disconnected" : "Active Call · Connected to Zoom"}
               </div>
               <div className="text-[22px] font-semibold leading-tight">Maya Chen</div>
               <div className="text-[12px] text-muted-foreground mt-0.5">
@@ -67,17 +94,35 @@ export default function ActiveCall() {
             </div>
           </div>
 
-          {/* Source-of-truth banner */}
-          <div className="bg-info border border-info-border rounded px-4 py-2.5 flex items-center gap-4 text-[12px]">
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="w-5 h-5 rounded bg-[#2D8CFF] grid place-items-center"><Video className="w-3 h-3 text-white" /></div>
-              <span className="font-semibold">Connected to your Zoom call · started 8 min ago</span>
+          {/* Source-of-truth banner OR Zoom-drop warning strip */}
+          {zoomDropped ? (
+            <div className="bg-warning/10 border border-l-4 border-l-warning border-warning/40 rounded px-4 py-2.5 flex items-center gap-4 text-[12px]">
+              <div className="flex items-center gap-2 shrink-0">
+                <AlertTriangle className="w-4 h-4 text-warning" />
+                <span className="font-semibold">Lost connection to Zoom 12 seconds ago.</span>
+              </div>
+              <div className="flex-1 text-muted-foreground">
+                Pulse will resume drafting when reconnected. Your in-call notes are saved locally.
+              </div>
+              <button
+                onClick={() => setBriefState("normal")}
+                className="text-primary font-medium hover:underline shrink-0 flex items-center gap-1"
+              >
+                <RefreshCw className="w-3 h-3" /> Retry connection
+              </button>
             </div>
-            <div className="flex-1 text-muted-foreground">
-              Pulse will draft fields after the call ends. Nothing is being written to Salesforce yet.
+          ) : (
+            <div className="bg-info border border-info-border rounded px-4 py-2.5 flex items-center gap-4 text-[12px]">
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="w-5 h-5 rounded bg-[#2D8CFF] grid place-items-center"><Video className="w-3 h-3 text-white" /></div>
+                <span className="font-semibold">Connected to your Zoom call · started 8 min ago</span>
+              </div>
+              <div className="flex-1 text-muted-foreground">
+                Pulse will draft fields after the call ends. Nothing is being written to Salesforce yet.
+              </div>
+              <a className="text-primary font-medium hover:underline shrink-0 cursor-pointer">Pause</a>
             </div>
-            <a className="text-primary font-medium hover:underline shrink-0 cursor-pointer">Pause</a>
-          </div>
+          )}
 
           {/* Path */}
           <div className="bg-card border border-border rounded p-2 flex items-center gap-1">
@@ -117,28 +162,56 @@ export default function ActiveCall() {
                 <div className="text-[11px] text-muted-foreground mt-0.5">Glance reference. Pulse is listening — you don't need to take field notes.</div>
               </div>
 
-              <div className="bg-card border border-border rounded">
-                <div className="px-4 py-3 border-b border-border">
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Account context</div>
-                  <div className="text-[13px] mt-1 leading-relaxed">
-                    Northwind Robotics tried building this internally — 18% adoption, $2M sunk. CEO threatening to buy Gong. Maya owns the technical decision; Marcus Lee (CFO) signs anything {">"} $50K.
+              {briefState === "loading" ? (
+                <div className="bg-card border border-border rounded">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className={cn("px-4 py-3", i < 2 && "border-b border-border")}>
+                      <Skeleton className="h-2.5 w-32 mb-2" />
+                      <Skeleton className="h-3 w-full mb-1.5" />
+                      <Skeleton className="h-3 w-[92%] mb-1.5" />
+                      <Skeleton className="h-3 w-[78%]" />
+                    </div>
+                  ))}
+                </div>
+              ) : briefState === "empty" ? (
+                <div className="bg-card border border-border rounded px-6 py-10 text-center">
+                  <div className="w-10 h-10 rounded-full bg-info border border-info-border grid place-items-center mx-auto mb-3">
+                    <Lightbulb className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="text-[13px] font-medium max-w-sm mx-auto leading-relaxed">
+                    No history with this contact yet. Pulse will draft full notes after the call ends — for now, just focus on the conversation.
+                  </div>
+                  <button
+                    onClick={() => setShowQuickNote(true)}
+                    className="mt-3 text-[12px] text-primary hover:underline font-medium"
+                  >
+                    Add quick note
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-card border border-border rounded">
+                  <div className="px-4 py-3 border-b border-border">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Account context</div>
+                    <div className="text-[13px] mt-1 leading-relaxed">
+                      Northwind Robotics tried building this internally — 18% adoption, $2M sunk. CEO threatening to buy Gong. Maya owns the technical decision; Marcus Lee (CFO) signs anything {">"} $50K.
+                    </div>
+                  </div>
+                  <div className="px-4 py-3 border-b border-border">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Last touchpoint</div>
+                    <div className="text-[13px] mt-1 leading-relaxed">
+                      Demo on Apr 14 (32m). Maya: <span className="italic">"This is exactly what we built and failed at."</span> Asked for SSO/audit and Pipedrive migration details on follow-up.
+                    </div>
+                  </div>
+                  <div className="px-4 py-3">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Talking points</div>
+                    <ul className="text-[13px] space-y-1.5 leading-relaxed list-disc pl-5">
+                      <li>SOC 2 Type II + audit log capabilities (kill objection #1)</li>
+                      <li>Pipedrive → Salesforce migration tooling demo (kill objection #2)</li>
+                      <li>Q2 implementation timeline confirmation + procurement path through Marcus</li>
+                    </ul>
                   </div>
                 </div>
-                <div className="px-4 py-3 border-b border-border">
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Last touchpoint</div>
-                  <div className="text-[13px] mt-1 leading-relaxed">
-                    Demo on Apr 14 (32m). Maya: <span className="italic">"This is exactly what we built and failed at."</span> Asked for SSO/audit and Pipedrive migration details on follow-up.
-                  </div>
-                </div>
-                <div className="px-4 py-3">
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Talking points</div>
-                  <ul className="text-[13px] space-y-1.5 leading-relaxed list-disc pl-5">
-                    <li>SOC 2 Type II + audit log capabilities (kill objection #1)</li>
-                    <li>Pipedrive → Salesforce migration tooling demo (kill objection #2)</li>
-                    <li>Q2 implementation timeline confirmation + procurement path through Marcus</li>
-                  </ul>
-                </div>
-              </div>
+              )}
 
               {/* What Pulse captures */}
               <div className="bg-info border border-info-border rounded p-3">

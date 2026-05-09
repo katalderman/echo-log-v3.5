@@ -6,6 +6,7 @@ import {
   Mic, Square, Bold, Italic, Strikethrough, List, ListOrdered, AtSign,
   CheckCircle2, RefreshCw, Filter, Mail, ClipboardList,
   StickyNote, Quote, Eye, Plus, Plug, FileUp, Calendar,
+  AlertCircle, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/pulse/Shell";
@@ -808,6 +809,15 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
   const [showLineage, setShowLineage] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [stepState, setStepState] = useState<0 | 1 | 2 | 3>(0); // sync row currently in progress
+  const [simulateError, setSimulateError] = useState(false);
+  const [errored, setErrored] = useState(false);
+
+  const SYNC_STEPS = [
+    { label: "Validating field permissions...", done: "Field permissions validated", ms: 400 },
+    { label: "Writing 7 fields to Maya Chen's record...", done: "7 fields written to Maya Chen's record", ms: 800 },
+    { label: "Logging activity to pipeline...", done: "Activity logged to pipeline", ms: 600 },
+  ];
 
   const ORIGINAL = [
     { key: "outcome", label: "Call outcome", value: "Qualified — moving to security review" },
@@ -847,18 +857,37 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
     setRows((arr) => arr.map((r) => (r.key === key ? { ...r, value: r.original, edited: false } : r)));
   };
 
+  // Stepped sync animation: each row resolves in sequence; progress bar fills smoothly across all rows.
   useEffect(() => {
-    if (!syncing) return;
-    const t = window.setInterval(() => setProgress((p) => Math.min(100, p + 6)), 80);
-    return () => clearInterval(t);
-  }, [syncing]);
+    if (!syncing || errored) return;
+    const totalMs = SYNC_STEPS.reduce((a, s) => a + s.ms, 0);
+    const cumulative = [SYNC_STEPS[0].ms, SYNC_STEPS[0].ms + SYNC_STEPS[1].ms, totalMs];
+    const start = Date.now();
+    const i = window.setInterval(() => {
+      const elapsed = Date.now() - start;
+      setProgress(Math.min(100, Math.round((elapsed / totalMs) * 100)));
+      // simulated failure on writing fields step
+      if (simulateError && elapsed >= SYNC_STEPS[0].ms + 200) {
+        setErrored(true);
+        window.clearInterval(i);
+        return;
+      }
+      if (elapsed >= cumulative[2]) {
+        setStepState(3);
+        window.clearInterval(i);
+        window.setTimeout(onConfirm, 250);
+      } else if (elapsed >= cumulative[1]) setStepState(2);
+      else if (elapsed >= cumulative[0]) setStepState(1);
+    }, 50);
+    return () => window.clearInterval(i);
+  }, [syncing, errored, simulateError, onConfirm]);
 
-  useEffect(() => {
-    if (progress >= 100) {
-      const t = window.setTimeout(onConfirm, 250);
-      return () => clearTimeout(t);
-    }
-  }, [progress, onConfirm]);
+  const retrySync = () => {
+    setErrored(false);
+    setProgress(0);
+    setStepState(0);
+    setSimulateError(false);
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center px-4 py-8">
@@ -875,19 +904,76 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
           )}
         </div>
 
-        {syncing ? (
-          <div className="p-8">
+        {syncing && !errored ? (
+          <div className="p-6">
             <div className="text-[13px] mb-3 flex items-center gap-2">
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" /> Syncing to Salesforce…
             </div>
-            <div className="w-full h-1.5 bg-secondary rounded overflow-hidden">
+            <div className="w-full h-1.5 bg-secondary rounded overflow-hidden mb-4">
               <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
             </div>
-            <div className="text-[11px] text-muted-foreground mt-2">
-              Writing fields · attaching summary · logging activity
+            <div className="space-y-2">
+              {SYNC_STEPS.map((s, i) => {
+                const done = stepState > i;
+                const active = stepState === i;
+                return (
+                  <div
+                    key={s.label}
+                    className={cn(
+                      "flex items-center gap-2 text-[12px] px-3 py-2 border rounded",
+                      done ? "border-success/40 bg-success/5" : "border-border bg-card"
+                    )}
+                  >
+                    {done ? (
+                      <span className="w-4 h-4 rounded-full bg-success grid place-items-center shrink-0">
+                        <Check className="w-2.5 h-2.5 text-white" />
+                      </span>
+                    ) : active ? (
+                      <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                    ) : (
+                      <span className="w-4 h-4 rounded-full border border-border bg-secondary shrink-0" />
+                    )}
+                    <span className={cn(done ? "text-success font-medium" : active ? "font-medium" : "text-muted-foreground")}>
+                      {done ? s.done : s.label}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        ) : (
+        ) : errored ? (
+          <div className="p-5 space-y-4">
+            <div className="bg-destructive/5 border border-l-4 border-l-destructive border-destructive/30 rounded p-4">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <div className="text-[13px] font-semibold text-destructive">Sync failed.</div>
+                  <div className="text-[12px] text-foreground/80 mt-1 leading-relaxed">
+                    Maya Chen's record is currently locked by another user. Your draft is saved — try again in a few minutes.
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              Path stays at <span className="font-medium text-foreground">Fields Confirmed</span>. Nothing was committed to Salesforce.
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <button
+                onClick={() => { setSyncing(false); setErrored(false); onCancel(); }}
+                className="h-9 px-4 text-[12px] border border-border rounded hover:bg-secondary"
+              >
+                Save Draft & Exit
+              </button>
+              <button
+                onClick={retrySync}
+                className="h-9 px-5 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 flex items-center gap-1.5"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Retry Sync
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {!syncing && !errored && (
           <>
             <div className="px-5 py-4 grid grid-cols-3 gap-3">
               <div className="bg-info border border-info-border rounded px-3 py-2.5">
@@ -1013,11 +1099,27 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
               </div>
             </div>
 
-            <div className="px-5 py-3 border-t border-border flex justify-end gap-2">
-              <button onClick={onCancel} className="h-9 px-4 text-[12px] border border-border rounded hover:bg-secondary">Cancel</button>
+            <div className="px-5 py-3 border-t border-border flex items-center gap-2">
+              <label className="text-[11px] text-muted-foreground flex items-center gap-1.5 mr-auto select-none cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={simulateError}
+                  onChange={(e) => setSimulateError(e.target.checked)}
+                  className="accent-destructive"
+                />
+                Simulate sync error
+              </label>
+              <button
+                onClick={onCancel}
+                disabled={syncing}
+                className="h-9 px-4 text-[12px] border border-border rounded hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
               <button
                 onClick={() => setSyncing(true)}
-                className="h-9 px-5 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                disabled={syncing}
+                className="h-9 px-5 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
               >
                 Confirm & Sync
               </button>

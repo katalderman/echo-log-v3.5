@@ -100,4 +100,21 @@
     to { opacity: 1; transform: translateY(0); }
   }
   .animate-fade-in { animation: fade-in 0.2s ease-out both; }
+
+  /* Salesforce Lightning skeleton shimmer — 1.4s loop, subtle gray gradient */
+  @keyframes sl-shimmer {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+  .sl-skeleton {
+    background: linear-gradient(
+      90deg,
+      hsl(0 0% 92%) 0%,
+      hsl(0 0% 96%) 40%,
+      hsl(0 0% 92%) 80%
+    );
+    background-size: 800px 100%;
+    animation: sl-shimmer 1.4s ease-in-out infinite;
+    border-radius: 2px;
+  }
 }
