@@ -172,7 +172,17 @@ export default function Complete() {
           {/* Hero stat strip */}
           {!isHistory && (
             <div className="grid grid-cols-3 gap-3">
-              <Stat value="7/7" label="Fields Confirmed" sub="Without amendments" />
+              <Stat
+                value={`${fieldCount}/${fieldCount + skippedFields.length}`}
+                label="Fields Confirmed"
+                sub={
+                  displayedFields.some((f) => f.edited)
+                    ? `${displayedFields.filter((f) => f.edited).length} edited in sync${skippedFields.length ? ` · ${skippedFields.length} skipped` : ""}`
+                    : skippedFields.length
+                      ? `${skippedFields.length} skipped — not synced`
+                      : "Without amendments"
+                }
+              />
               <Stat value="22s" label="Review Time" sub="vs 4.5min manual" highlight />
               <Stat value="4m 8s" label="Saved vs. manual" sub="Compounds across the team" />
             </div>
