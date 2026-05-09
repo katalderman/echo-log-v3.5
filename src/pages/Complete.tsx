@@ -15,6 +15,16 @@ export default function Complete() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [secAgo, setSecAgo] = useState(2);
+  const [pipelineState, setPipelineState] = useState<ScreenState>("loading");
+  const [queueState, setQueueState] = useState<ScreenState>("normal");
+  const [verifyState, setVerifyState] = useState<ScreenState>("normal");
+
+  // pipeline-push skeleton resolves to live in 1s
+  useEffect(() => {
+    if (pipelineState !== "loading") return;
+    const t = window.setTimeout(() => setPipelineState("normal"), 1000);
+    return () => clearTimeout(t);
+  }, [pipelineState]);
 
   // history mode if id matches a previous call
   const previous = PREVIOUS_CALLS.find((c) => c.id === id);
