@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Phone, Video, MicOff, ChevronDown, ChevronRight, Check, FileText, Sparkles, Zap, Pause } from "lucide-react";
+import {
+  Phone, Video, MicOff, ChevronDown, ChevronRight, Check, FileText, Sparkles, Zap,
+  Lightbulb, AlertTriangle, RefreshCw,
+} from "lucide-react";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/pulse/Shell";
+import { StateControls, Skeleton, ScreenState } from "@/components/pulse/StateControls";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Call In Progress", "Call Ended", "AI Drafting", "Ready for Review", "Confirmed", "Synced"];
