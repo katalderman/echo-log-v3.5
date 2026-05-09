@@ -149,6 +149,20 @@ export default function Complete() {
             </div>
           )}
 
+          {/* Verification timeout — observability gap, not a transaction failure */}
+          {!isHistory && verifyState === "error" && (
+            <div className="bg-warning/10 border border-l-4 border-l-warning border-warning/40 rounded px-4 py-2.5 flex items-center gap-4 text-[12px]">
+              <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
+              <div className="flex-1">
+                <span className="font-semibold">Synced, but verification timed out.</span>
+                <span className="text-muted-foreground"> Open the contact in Salesforce to confirm fields landed correctly.</span>
+              </div>
+              <a className="text-primary font-medium hover:underline shrink-0 flex items-center gap-1 cursor-pointer">
+                Open in Salesforce <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          )}
+
           <div className="grid grid-cols-12 gap-4">
             {/* Left: About */}
             <div className="col-span-3">
