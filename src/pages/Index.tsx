@@ -876,7 +876,7 @@ function SyncModal({
   skippedCount,
 }: {
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (rows: { key: string; label: string; value: string; original: string; edited: boolean }[]) => void;
   syncFields: { key: string; label: string; value: string }[];
   skippedCount: number;
 }) {
