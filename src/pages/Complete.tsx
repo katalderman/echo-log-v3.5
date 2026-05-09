@@ -58,6 +58,31 @@ export default function Complete() {
         />
 
         <main className="flex-1 px-6 py-4 space-y-4">
+          {!isHistory && (
+            <div className="flex justify-end gap-2 flex-wrap">
+              <StateControls
+                value={pipelineState}
+                onChange={setPipelineState}
+                label="Pipeline push"
+                options={["loading", "normal"]}
+                optionLabels={{ loading: "Loading", normal: "Live" }}
+              />
+              <StateControls
+                value={queueState}
+                onChange={setQueueState}
+                label="Review queue"
+                options={["normal", "empty"]}
+                optionLabels={{ normal: "3 calls", empty: "Empty" }}
+              />
+              <StateControls
+                value={verifyState}
+                onChange={setVerifyState}
+                label="Verification"
+                options={["normal", "error"]}
+                optionLabels={{ normal: "OK", error: "Timeout" }}
+              />
+            </div>
+          )}
           {/* Record header — success state */}
           <div className="bg-card border border-border rounded p-4 flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-success grid place-items-center shrink-0">
