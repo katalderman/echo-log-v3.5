@@ -25,6 +25,7 @@ type Field = {
   confidence: Confidence;
   source: { speaker: string; ts: string; quote: string };
   confirmed: boolean;
+  skipped?: boolean;
 };
 
 const SEED_SUMMARY =
