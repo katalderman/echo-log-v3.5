@@ -962,7 +962,7 @@ function SyncModal({
           <div>
             <div className="font-semibold text-[22px] leading-tight">Sync to Salesforce?</div>
             <div className="text-[13px] text-muted-foreground mt-1">
-              Review and edit if needed. 7 fields, 1 summary, and 1 voice note will be added to Maya Chen's contact record.
+              Review and edit if needed. {fieldCount} field{fieldCount === 1 ? "" : "s"}{skippedCount > 0 ? ` (${skippedCount} skipped)` : ""}, 1 summary, and 1 voice note will be added to Maya Chen's contact record.
             </div>
           </div>
           {!syncing && (
