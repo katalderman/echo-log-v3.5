@@ -289,7 +289,14 @@ const Index = () => {
       </div>
 
       {recording && <FloatingRecChip ms={recMs} onStop={stopRecord} />}
-      {showSync && <SyncModal onCancel={() => setShowSync(false)} onConfirm={doSync} />}
+      {showSync && (
+        <SyncModal
+          onCancel={() => setShowSync(false)}
+          onConfirm={doSync}
+          syncFields={fields.filter((f) => !f.skipped).map((f) => ({ key: f.key, label: f.label, value: f.value }))}
+          skippedCount={skippedCount}
+        />
+      )}
       {showImport && <ImportModal onClose={() => setShowImport(false)} />}
     </div>
   );
@@ -862,7 +869,17 @@ function TodoFooter() {
 // Modals
 // ============================================================================
 
-function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
+function SyncModal({
+  onCancel,
+  onConfirm,
+  syncFields,
+  skippedCount,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void;
+  syncFields: { key: string; label: string; value: string }[];
+  skippedCount: number;
+}) {
   const [showLineage, setShowLineage] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -870,25 +887,17 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
   const [simulateError, setSimulateError] = useState(false);
   const [errored, setErrored] = useState(false);
 
+  const fieldCount = syncFields.length;
+
   const SYNC_STEPS = [
     { label: "Validating field permissions...", done: "Field permissions validated", ms: 400 },
-    { label: "Writing 7 fields to Maya Chen's record...", done: "7 fields written to Maya Chen's record", ms: 800 },
+    { label: `Writing ${fieldCount} field${fieldCount === 1 ? "" : "s"} to Maya Chen's record...`, done: `${fieldCount} field${fieldCount === 1 ? "" : "s"} written to Maya Chen's record`, ms: 800 },
     { label: "Logging activity to pipeline...", done: "Activity logged to pipeline", ms: 600 },
-  ];
-
-  const ORIGINAL = [
-    { key: "outcome", label: "Call outcome", value: "Qualified — moving to security review" },
-    { key: "next", label: "Next step", value: "Send SOC 2 + sandbox access by Fri Apr 30" },
-    { key: "dm", label: "Decision maker", value: "Marcus Lee (CFO) — budget; Maya — technical" },
-    { key: "budget", label: "Budget signal", value: "$60–80K ACV envelope confirmed" },
-    { key: "timeline", label: "Timeline", value: "Q2 2026 implementation; 60-day procurement" },
-    { key: "objections", label: "Objections", value: "SSO/audit logs + Pipedrive migration" },
-    { key: "sentiment", label: "Sentiment", value: "Positive — exec air-cover from CEO" },
   ];
 
   type Row = { key: string; label: string; value: string; original: string; edited: boolean };
   const [rows, setRows] = useState<Row[]>(
-    ORIGINAL.map((f) => ({ ...f, original: f.value, edited: false }))
+    syncFields.map((f) => ({ ...f, original: f.value, edited: false }))
   );
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -953,7 +962,7 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
           <div>
             <div className="font-semibold text-[22px] leading-tight">Sync to Salesforce?</div>
             <div className="text-[13px] text-muted-foreground mt-1">
-              Review and edit if needed. 7 fields, 1 summary, and 1 voice note will be added to Maya Chen's contact record.
+              Review and edit if needed. {fieldCount} field{fieldCount === 1 ? "" : "s"}{skippedCount > 0 ? ` (${skippedCount} skipped)` : ""}, 1 summary, and 1 voice note will be added to Maya Chen's contact record.
             </div>
           </div>
           {!syncing && (
@@ -1035,7 +1044,7 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
             <div className="px-5 py-4 grid grid-cols-3 gap-3">
               <div className="bg-info border border-info-border rounded px-3 py-2.5">
                 <div className="text-[20px] font-semibold leading-tight num text-primary flex items-center gap-1.5">
-                  7
+                  {fieldCount}
                   {editedCount > 0 && (
                     <span className="inline-flex items-center gap-1 text-[10px] font-medium text-warning bg-warning/10 border border-warning/40 px-1.5 py-0.5 rounded">
                       <span className="w-1.5 h-1.5 rounded-full bg-warning" /> {editedCount} edited
@@ -1043,7 +1052,7 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
                   )}
                 </div>
                 <div className="text-[11px] font-medium">Fields</div>
-                <div className="text-[10px] text-muted-foreground">confirmed</div>
+                <div className="text-[10px] text-muted-foreground">{skippedCount > 0 ? `confirmed · ${skippedCount} skipped` : "confirmed"}</div>
               </div>
               <div className="bg-info border border-info-border rounded px-3 py-2.5">
                 <div className="text-[20px] font-semibold leading-tight num text-primary">1</div>
