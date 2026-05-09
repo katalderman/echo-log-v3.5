@@ -35,6 +35,16 @@ export default function Complete() {
   const queueRest = REVIEW_QUEUE.filter((c) => c.id !== "maya-chen").slice(0, 3);
   const nextCall = queueRest[0];
 
+  const [drafts, setDrafts] = useState<Array<{ id: string; contact: string; company: string; duration: string; date: string; fieldsConfirmed: number; fieldsTotal: number }>>([]);
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("pulse:drafts") || "[]");
+      setDrafts(stored);
+    } catch {
+      setDrafts([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (isHistory) return;
     const t = setInterval(() => setSecAgo((s) => s + 1), 1000);
@@ -240,9 +250,29 @@ export default function Complete() {
                     <div className="text-[13px] font-semibold flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-primary" /> Your team's review queue
                     </div>
-                    <span className="text-[11px] text-muted-foreground">3 calls waiting · ~66s total</span>
+                    <span className="text-[11px] text-muted-foreground">{drafts.length + queueRest.length} calls waiting{drafts.length > 0 ? ` · ${drafts.length} draft${drafts.length === 1 ? "" : "s"}` : " · ~66s total"}</span>
                   </div>
                   <div className="divide-y divide-border">
+                    {drafts.map((d) => (
+                      <div key={`draft-${d.id}`} className="px-3 py-2.5 flex items-center gap-3 hover:bg-secondary/40 bg-warning/5">
+                        <div className="w-7 h-7 rounded-full bg-warning/20 border border-warning/40 grid place-items-center shrink-0">
+                          <Phone className="w-3.5 h-3.5 text-warning-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[13px] font-medium truncate">{d.contact} <span className="text-muted-foreground font-normal">— {d.company}</span></div>
+                          <div className="text-[11px] text-muted-foreground">{d.duration} · {d.date}</div>
+                        </div>
+                        <span className="h-5 px-2 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-[#FFF7E6] text-warning-foreground border border-warning/40 flex items-center">
+                          Draft · {d.fieldsConfirmed} of {d.fieldsTotal} confirmed
+                        </span>
+                        <button
+                          onClick={() => navigate("/")}
+                          className="h-7 px-3 text-[11px] font-medium border border-primary text-primary rounded hover:bg-primary/5"
+                        >
+                          Resume
+                        </button>
+                      </div>
+                    ))}
                     {queueRest.map((c) => (
                       <div key={c.id} className="px-3 py-2.5 flex items-center gap-3 hover:bg-secondary/40">
                         <div className="w-7 h-7 rounded-full bg-teal grid place-items-center shrink-0">
