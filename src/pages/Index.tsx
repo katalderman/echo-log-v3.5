@@ -193,7 +193,7 @@ const Index = () => {
         <StatBanner onImport={() => setShowImport(true)} />
 
         <main className="flex-1 px-6 py-4 space-y-4">
-          <RecordHeader synced={synced} syncedAgo={syncedAgo} onSync={() => setShowSync(true)} />
+          <RecordHeader synced={synced} syncedAgo={syncedAgo} onSync={() => setShowSync(true)} allConfirmed={confirmedCount === 7} confirmedCount={confirmedCount} />
           <SourceBanner />
           <PathBar step={pathStep} />
 
