@@ -941,7 +941,7 @@ function SyncModal({
       if (elapsed >= cumulative[2]) {
         setStepState(3);
         window.clearInterval(i);
-        window.setTimeout(onConfirm, 250);
+        window.setTimeout(() => onConfirm(rows), 250);
       } else if (elapsed >= cumulative[1]) setStepState(2);
       else if (elapsed >= cumulative[0]) setStepState(1);
     }, 50);
