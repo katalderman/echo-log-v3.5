@@ -9,18 +9,18 @@ const LABELS: Record<ScreenState, string> = {
   error: "Error",
 };
 
-export function StateControls<T extends string>({
+export function StateControls({
   value,
   onChange,
-  options = ["normal", "loading", "empty", "error"] as T[],
+  options = ["normal", "loading", "empty", "error"],
   label = "Simulate state",
   optionLabels,
 }: {
-  value: T;
-  onChange: (v: T) => void;
-  options?: T[];
+  value: string;
+  onChange: (v: any) => void;
+  options?: string[];
   label?: string;
-  optionLabels?: Partial<Record<T, string>>;
+  optionLabels?: Record<string, string>;
 }) {
   return (
     <div className="bg-card border border-border rounded px-3 py-1.5 flex items-center gap-2 text-[11px]">
