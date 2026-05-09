@@ -204,8 +204,7 @@ const Index = () => {
               <CenterHeader
                 summaryReviewed={summaryReviewed}
                 synced={synced}
-                syncedAgo={syncedAgo}
-                allConfirmed={confirmedCount === 7}
+                confirmedCount={confirmedCount}
                 onConfirmAll={confirmAll}
               />
               <SummaryBlock
@@ -217,10 +216,12 @@ const Index = () => {
                 setReviewed={setSummaryReviewed}
               />
               <div className="space-y-2">
-                {fields.map((f) => (
+                {fields.map((f, i) => (
                   <FieldCard
                     key={f.key}
                     field={f}
+                    position={i + 1}
+                    total={fields.length}
                     expanded={expandedSources.has(f.key)}
                     onToggleSource={() => toggleSource(f.key)}
                     onConfirm={() => toggleConfirm(f.key)}
