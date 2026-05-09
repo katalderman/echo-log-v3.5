@@ -46,16 +46,29 @@ export default function ActiveCall() {
         />
 
         <main className="flex-1 px-6 py-4 space-y-4">
+          <div className="flex justify-end">
+            <StateControls value={briefState} onChange={setBriefState} />
+          </div>
+
           {/* Record header */}
           <div className="bg-card border border-border rounded p-4 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-teal grid place-items-center shrink-0 relative">
+            <div className={cn(
+              "w-12 h-12 rounded-full grid place-items-center shrink-0 relative",
+              zoomDropped ? "bg-warning" : "bg-teal"
+            )}>
               <Phone className="w-5 h-5 text-white" />
-              <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-teal border-2 border-card animate-pulse" />
+              <span className={cn(
+                "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card",
+                zoomDropped ? "bg-warning" : "bg-teal animate-pulse"
+              )} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[11px] uppercase tracking-wide font-semibold flex items-center gap-1.5" style={{ color: "hsl(var(--teal))" }}>
-                <span className="w-2 h-2 rounded-full bg-teal animate-pulse" />
-                Active Call · Connected to Zoom
+              <div
+                className="text-[11px] uppercase tracking-wide font-semibold flex items-center gap-1.5"
+                style={{ color: zoomDropped ? "hsl(var(--warning))" : "hsl(var(--teal))" }}
+              >
+                <span className={cn("w-2 h-2 rounded-full", zoomDropped ? "bg-warning" : "bg-teal animate-pulse")} />
+                {zoomDropped ? "Active Call · Zoom Disconnected" : "Active Call · Connected to Zoom"}
               </div>
               <div className="text-[22px] font-semibold leading-tight">Maya Chen</div>
               <div className="text-[12px] text-muted-foreground mt-0.5">
@@ -81,17 +94,35 @@ export default function ActiveCall() {
             </div>
           </div>
 
-          {/* Source-of-truth banner */}
-          <div className="bg-info border border-info-border rounded px-4 py-2.5 flex items-center gap-4 text-[12px]">
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="w-5 h-5 rounded bg-[#2D8CFF] grid place-items-center"><Video className="w-3 h-3 text-white" /></div>
-              <span className="font-semibold">Connected to your Zoom call · started 8 min ago</span>
+          {/* Source-of-truth banner OR Zoom-drop warning strip */}
+          {zoomDropped ? (
+            <div className="bg-warning/10 border border-l-4 border-l-warning border-warning/40 rounded px-4 py-2.5 flex items-center gap-4 text-[12px]">
+              <div className="flex items-center gap-2 shrink-0">
+                <AlertTriangle className="w-4 h-4 text-warning" />
+                <span className="font-semibold">Lost connection to Zoom 12 seconds ago.</span>
+              </div>
+              <div className="flex-1 text-muted-foreground">
+                Pulse will resume drafting when reconnected. Your in-call notes are saved locally.
+              </div>
+              <button
+                onClick={() => setBriefState("normal")}
+                className="text-primary font-medium hover:underline shrink-0 flex items-center gap-1"
+              >
+                <RefreshCw className="w-3 h-3" /> Retry connection
+              </button>
             </div>
-            <div className="flex-1 text-muted-foreground">
-              Pulse will draft fields after the call ends. Nothing is being written to Salesforce yet.
+          ) : (
+            <div className="bg-info border border-info-border rounded px-4 py-2.5 flex items-center gap-4 text-[12px]">
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="w-5 h-5 rounded bg-[#2D8CFF] grid place-items-center"><Video className="w-3 h-3 text-white" /></div>
+                <span className="font-semibold">Connected to your Zoom call · started 8 min ago</span>
+              </div>
+              <div className="flex-1 text-muted-foreground">
+                Pulse will draft fields after the call ends. Nothing is being written to Salesforce yet.
+              </div>
+              <a className="text-primary font-medium hover:underline shrink-0 cursor-pointer">Pause</a>
             </div>
-            <a className="text-primary font-medium hover:underline shrink-0 cursor-pointer">Pause</a>
-          </div>
+          )}
 
           {/* Path */}
           <div className="bg-card border border-border rounded p-2 flex items-center gap-1">
