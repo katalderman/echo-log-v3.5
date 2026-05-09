@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Salesforce Lightning Design System tokens */
+@layer base {
+  :root {
+    /* Canvas + surfaces */
+    --background: 0 0% 95.3%;          /* #F3F3F3 app canvas */
+    --foreground: 0 0% 9.4%;           /* #181818 body text */
+
+    --card: 0 0% 100%;                 /* #FFFFFF */
+    --card-foreground: 0 0% 9.4%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9.4%;
+
+    /* Salesforce blue */
+    --primary: 205 99% 42%;            /* #0176D3 */
+    --primary-foreground: 0 0% 100%;
+
+    /* Deep navy (nav rail, path active) */
+    --nav: 211 94% 19%;                /* #032D60 */
+    --nav-foreground: 0 0% 100%;
+
+    --secondary: 210 17% 96%;          /* #F3F4F6 */
+    --secondary-foreground: 0 0% 9.4%;
+
+    --muted: 210 17% 96%;
+    --muted-foreground: 30 2% 43%;     /* #706E6B */
+
+    --accent: 205 99% 95%;             /* very light blue tint */
+    --accent-foreground: 205 99% 30%;
+
+    --destructive: 354 100% 46%;       /* #EA001E */
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 47% 35%;            /* #2E844A */
+    --success-foreground: 0 0% 100%;
+
+    --warning: 28 99% 60%;             /* #FE9339 */
+    --warning-foreground: 0 0% 9.4%;
+
+    --border: 30 5% 86%;               /* #DDDBDA */
+    --input: 30 5% 86%;
+    --ring: 205 99% 42%;
+
+    --radius: 0.25rem;                 /* 4px Lightning */
+
+    --info-bg: 205 99% 96%;            /* light blue info tile */
+    --info-border: 205 99% 80%;
+
+    --teal: 174 60% 38%;               /* object-icon teal */
+
+    --sidebar-background: 211 94% 19%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 205 99% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 211 80% 25%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 211 50% 30%;
+    --sidebar-ring: 205 99% 42%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html, body, #root {
+    @apply bg-background text-foreground;
+  }
+
+  body {
+    font-family: "Salesforce Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text",
+      "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* Path component clip-path chevron */
+  .path-chevron {
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%);
+  }
+  .path-chevron-first {
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);
+  }
+  .path-chevron-last {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 12px 50%);
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(2px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-in { animation: fade-in 0.2s ease-out both; }
+}
