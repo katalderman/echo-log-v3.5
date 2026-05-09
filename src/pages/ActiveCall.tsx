@@ -162,28 +162,56 @@ export default function ActiveCall() {
                 <div className="text-[11px] text-muted-foreground mt-0.5">Glance reference. Pulse is listening — you don't need to take field notes.</div>
               </div>
 
-              <div className="bg-card border border-border rounded">
-                <div className="px-4 py-3 border-b border-border">
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Account context</div>
-                  <div className="text-[13px] mt-1 leading-relaxed">
-                    Northwind Robotics tried building this internally — 18% adoption, $2M sunk. CEO threatening to buy Gong. Maya owns the technical decision; Marcus Lee (CFO) signs anything {">"} $50K.
+              {briefState === "loading" ? (
+                <div className="bg-card border border-border rounded">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className={cn("px-4 py-3", i < 2 && "border-b border-border")}>
+                      <Skeleton className="h-2.5 w-32 mb-2" />
+                      <Skeleton className="h-3 w-full mb-1.5" />
+                      <Skeleton className="h-3 w-[92%] mb-1.5" />
+                      <Skeleton className="h-3 w-[78%]" />
+                    </div>
+                  ))}
+                </div>
+              ) : briefState === "empty" ? (
+                <div className="bg-card border border-border rounded px-6 py-10 text-center">
+                  <div className="w-10 h-10 rounded-full bg-info border border-info-border grid place-items-center mx-auto mb-3">
+                    <Lightbulb className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="text-[13px] font-medium max-w-sm mx-auto leading-relaxed">
+                    No history with this contact yet. Pulse will draft full notes after the call ends — for now, just focus on the conversation.
+                  </div>
+                  <button
+                    onClick={() => setShowQuickNote(true)}
+                    className="mt-3 text-[12px] text-primary hover:underline font-medium"
+                  >
+                    Add quick note
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-card border border-border rounded">
+                  <div className="px-4 py-3 border-b border-border">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Account context</div>
+                    <div className="text-[13px] mt-1 leading-relaxed">
+                      Northwind Robotics tried building this internally — 18% adoption, $2M sunk. CEO threatening to buy Gong. Maya owns the technical decision; Marcus Lee (CFO) signs anything {">"} $50K.
+                    </div>
+                  </div>
+                  <div className="px-4 py-3 border-b border-border">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Last touchpoint</div>
+                    <div className="text-[13px] mt-1 leading-relaxed">
+                      Demo on Apr 14 (32m). Maya: <span className="italic">"This is exactly what we built and failed at."</span> Asked for SSO/audit and Pipedrive migration details on follow-up.
+                    </div>
+                  </div>
+                  <div className="px-4 py-3">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Talking points</div>
+                    <ul className="text-[13px] space-y-1.5 leading-relaxed list-disc pl-5">
+                      <li>SOC 2 Type II + audit log capabilities (kill objection #1)</li>
+                      <li>Pipedrive → Salesforce migration tooling demo (kill objection #2)</li>
+                      <li>Q2 implementation timeline confirmation + procurement path through Marcus</li>
+                    </ul>
                   </div>
                 </div>
-                <div className="px-4 py-3 border-b border-border">
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Last touchpoint</div>
-                  <div className="text-[13px] mt-1 leading-relaxed">
-                    Demo on Apr 14 (32m). Maya: <span className="italic">"This is exactly what we built and failed at."</span> Asked for SSO/audit and Pipedrive migration details on follow-up.
-                  </div>
-                </div>
-                <div className="px-4 py-3">
-                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Talking points</div>
-                  <ul className="text-[13px] space-y-1.5 leading-relaxed list-disc pl-5">
-                    <li>SOC 2 Type II + audit log capabilities (kill objection #1)</li>
-                    <li>Pipedrive → Salesforce migration tooling demo (kill objection #2)</li>
-                    <li>Q2 implementation timeline confirmation + procurement path through Marcus</li>
-                  </ul>
-                </div>
-              </div>
+              )}
 
               {/* What Pulse captures */}
               <div className="bg-info border border-info-border rounded p-3">
