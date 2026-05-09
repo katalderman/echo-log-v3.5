@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Phone, ChevronRight, ChevronDown, X, Check, Pencil, Video, FileText, Upload, Link2,
+  Phone, Search, ChevronRight, ChevronDown, X, Check, Pencil, Video, FileText, Upload, Link2,
   Mic, Square, Bold, Italic, Strikethrough, List, ListOrdered, AtSign,
   CheckCircle2, RefreshCw, Filter, Mail, ClipboardList,
   StickyNote, Quote, Eye, Plus, Plug, FileUp, Calendar,
@@ -255,80 +255,7 @@ const Index = () => {
 
 export default Index;
 
-// ============================================================================
-// Nav rail + top chrome
-// ============================================================================
-
-function NavRail() {
-  const items = [
-    { icon: Home, label: "Home" },
-    { icon: Phone, label: "Calls", active: true },
-    { icon: Users, label: "Contacts" },
-    { icon: Building2, label: "Accounts" },
-    { icon: BarChart3, label: "Pipeline" },
-  ];
-  return (
-    <aside className="w-[60px] shrink-0 bg-nav text-nav-foreground flex flex-col items-center py-3 gap-1 sticky top-0 h-screen">
-      <div className="w-8 h-8 rounded bg-primary grid place-items-center text-[11px] font-bold mb-2">P</div>
-      {items.map((it) => (
-        <button
-          key={it.label}
-          className={cn(
-            "w-[52px] py-2 rounded flex flex-col items-center gap-0.5 transition-colors",
-            it.active ? "bg-white/10" : "hover:bg-white/5"
-          )}
-        >
-          <it.icon className="w-4 h-4" />
-          <span className="text-[9px] leading-tight">{it.label}</span>
-        </button>
-      ))}
-      <button className="mt-auto w-[52px] py-2 rounded flex flex-col items-center gap-0.5 hover:bg-white/5">
-        <Settings className="w-4 h-4" />
-        <span className="text-[9px]">Settings</span>
-      </button>
-    </aside>
-  );
-}
-
-function TopBar() {
-  return (
-    <header className="h-12 bg-card border-b border-border flex items-center px-4 gap-4 sticky top-0 z-20">
-      <div className="text-[13px] font-semibold text-nav">Pulse</div>
-      <div className="flex-1 max-w-2xl mx-auto relative">
-        <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input
-          placeholder="Search Salesforce"
-          className="w-full h-8 pl-8 pr-3 text-[13px] bg-secondary border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-        />
-      </div>
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <button className="p-1.5 hover:bg-secondary rounded"><HelpCircle className="w-4 h-4" /></button>
-        <button className="p-1.5 hover:bg-secondary rounded"><Settings className="w-4 h-4" /></button>
-        <button className="p-1.5 hover:bg-secondary rounded relative">
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-destructive" />
-        </button>
-        <div className="w-7 h-7 rounded-full bg-teal grid place-items-center text-[11px] font-medium text-white">JR</div>
-      </div>
-    </header>
-  );
-}
-
-function BreadcrumbTabs() {
-  return (
-    <div className="bg-card border-b border-border flex items-center text-[12px]">
-      <div className="flex items-center px-4 py-2 text-muted-foreground gap-1">
-        <Phone className="w-3.5 h-3.5" /> Calls <ChevronRight className="w-3 h-3 mx-0.5" />
-        <span className="text-foreground">Active Review</span>
-      </div>
-      <div className="flex items-center gap-2 px-3 py-1.5 border-l border-r border-border bg-accent/40 border-b-2 border-b-primary -mb-px">
-        <Phone className="w-3.5 h-3.5 text-teal" />
-        <span className="font-medium">Maya Chen — Northwind Robotics</span>
-        <button className="hover:bg-secondary rounded p-0.5"><X className="w-3 h-3" /></button>
-      </div>
-    </div>
-  );
-}
+// Shell components imported from @/components/pulse/Shell
 
 // ============================================================================
 // Stat banner
