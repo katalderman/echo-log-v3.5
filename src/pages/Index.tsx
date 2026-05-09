@@ -974,11 +974,6 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
           </div>
         ) : null}
         {!syncing && !errored && (
-          <></>
-        )}
-        {!syncing && !errored ? null : null}
-        {/* original review/edit UI is rendered when not syncing */}
-
           <>
             <div className="px-5 py-4 grid grid-cols-3 gap-3">
               <div className="bg-info border border-info-border rounded px-3 py-2.5">
