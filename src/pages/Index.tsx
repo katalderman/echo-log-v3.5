@@ -6,6 +6,7 @@ import {
   Mic, Square, Bold, Italic, Strikethrough, List, ListOrdered, AtSign,
   CheckCircle2, RefreshCw, Filter, Mail, ClipboardList,
   StickyNote, Quote, Eye, Plus, Plug, FileUp, Calendar,
+  AlertCircle, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/pulse/Shell";
