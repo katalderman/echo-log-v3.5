@@ -482,9 +482,7 @@ function CenterHeader({ summaryReviewed, synced, confirmedCount, onConfirmAll }:
         ) : (
           <button
             onClick={onConfirmAll}
-            disabled={!summaryReviewed}
-            className="h-8 px-3 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-            title={!summaryReviewed ? "Review the summary first" : ""}
+            className="h-8 px-3 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 shrink-0"
           >
             {confirmedCount === 0 ? "Confirm All Fields" : `Confirm Remaining (${remaining})`}
           </button>
