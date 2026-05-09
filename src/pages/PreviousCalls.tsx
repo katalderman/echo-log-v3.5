@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Phone, Mail, Filter, Check, TrendingUp, Clock, Award } from "lucide-react";
+import { Search, Phone, Mail, Filter, Check, TrendingUp, Clock, Award, AlertCircle, RefreshCw, Inbox } from "lucide-react";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/pulse/Shell";
+import { StateControls, Skeleton, ScreenState } from "@/components/pulse/StateControls";
 import { cn } from "@/lib/utils";
 import { PREVIOUS_CALLS, Outcome } from "@/data/calls";
 
