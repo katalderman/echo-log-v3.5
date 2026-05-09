@@ -215,6 +215,8 @@ const Index = () => {
                 summaryReviewed={summaryReviewed}
                 synced={synced}
                 confirmedCount={confirmedCount}
+                skippedCount={skippedCount}
+                resolvedCount={resolvedCount}
                 onConfirmAll={confirmAll}
                 onSync={() => setShowSync(true)}
                 onSaveDraft={() => {
