@@ -289,7 +289,14 @@ const Index = () => {
       </div>
 
       {recording && <FloatingRecChip ms={recMs} onStop={stopRecord} />}
-      {showSync && <SyncModal onCancel={() => setShowSync(false)} onConfirm={doSync} />}
+      {showSync && (
+        <SyncModal
+          onCancel={() => setShowSync(false)}
+          onConfirm={doSync}
+          syncFields={fields.filter((f) => !f.skipped).map((f) => ({ key: f.key, label: f.label, value: f.value }))}
+          skippedCount={skippedCount}
+        />
+      )}
       {showImport && <ImportModal onClose={() => setShowImport(false)} />}
     </div>
   );
