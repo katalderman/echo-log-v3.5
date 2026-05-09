@@ -267,42 +267,64 @@ export default function Complete() {
 
             {/* Right: Pipeline preview */}
             <div className="col-span-3 space-y-4">
-              <div className="bg-card border border-border rounded text-[12px]">
-                <div className="px-3 py-2 border-b border-border">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[13px] font-semibold">Pipeline Review Preview</span>
-                    <span className="text-[10px] font-bold text-success bg-success/10 border border-success/30 px-1.5 py-0.5 rounded whitespace-nowrap">
-                      ✓ NOW LIVE
-                    </span>
+              {pipelineState === "loading" && !isHistory ? (
+                <div className="bg-card border border-border rounded text-[12px]">
+                  <div className="px-3 py-2 border-b border-border">
+                    <div className="text-[13px] font-semibold flex items-center gap-1.5">
+                      <RefreshCw className="w-3 h-3 animate-spin text-primary" /> Pushing to manager dashboard…
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">Field summary going live.</div>
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Live in Manager Dashboard.</div>
-                </div>
-                <div className="p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground text-[11px]">Northwind Robotics</span>
-                    <span className="font-semibold num">$72,000</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground">Stage</span>
-                    <span>Qualification → Security Review</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground">Close</span>
-                    <span>Jun 30, 2026 (Q2)</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground">Confidence</span>
-                    <span className="text-success font-medium">High — exec sponsor</span>
-                  </div>
-                  <div className="border-t border-border pt-2 mt-2">
-                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Latest call snapshot</div>
-                    <div className="text-[11px] leading-snug">Qualified. CFO Marcus Lee owns budget. Procurement 60 days. Blockers: SSO/audit, Pipedrive migration.</div>
-                  </div>
-                  <div className="bg-info border border-info-border rounded px-2 py-1.5 text-[10px] text-primary mt-2 flex items-center gap-1.5">
-                    <Check className="w-3 h-3" /> Pushed to team's pipeline view
+                  <div className="p-3 space-y-2">
+                    <Skeleton className="h-3 w-3/4" />
+                    <Skeleton className="h-3 w-2/3" />
+                    <Skeleton className="h-3 w-4/5" />
+                    <Skeleton className="h-3 w-1/2" />
+                    <div className="border-t border-border pt-2 mt-2 space-y-1.5">
+                      <Skeleton className="h-2.5 w-1/3" />
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-[88%]" />
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-card border border-border rounded text-[12px]">
+                  <div className="px-3 py-2 border-b border-border">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[13px] font-semibold">Pipeline Review Preview</span>
+                      <span className="text-[10px] font-bold text-success bg-success/10 border border-success/30 px-1.5 py-0.5 rounded whitespace-nowrap">
+                        ✓ LIVE IN MANAGER DASHBOARD
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">Live in Manager Dashboard.</div>
+                  </div>
+                  <div className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground text-[11px]">Northwind Robotics</span>
+                      <span className="font-semibold num">$72,000</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground">Stage</span>
+                      <span>Qualification → Security Review</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground">Close</span>
+                      <span>Jun 30, 2026 (Q2)</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground">Confidence</span>
+                      <span className="text-success font-medium">High — exec sponsor</span>
+                    </div>
+                    <div className="border-t border-border pt-2 mt-2">
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Latest call snapshot</div>
+                      <div className="text-[11px] leading-snug">Qualified. CFO Marcus Lee owns budget. Procurement 60 days. Blockers: SSO/audit, Pipedrive migration.</div>
+                    </div>
+                    <div className="bg-info border border-info-border rounded px-2 py-1.5 text-[10px] text-primary mt-2 flex items-center gap-1.5">
+                      <Check className="w-3 h-3" /> Pushed to team's pipeline view
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </main>
