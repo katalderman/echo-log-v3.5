@@ -91,8 +91,8 @@ export default function PreviousCalls() {
             </div>
           </div>
 
-          {/* Filters */}
-          <div className="space-y-2">
+          {/* Filters — hidden for brand-new users */}
+          {!isBrandNew && <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">Time</span>
               {TIME_FILTERS.map((f) => (
@@ -127,20 +127,97 @@ export default function PreviousCalls() {
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
 
           <div className="grid grid-cols-12 gap-4">
             {/* Table */}
-            <div className="col-span-9">
-              <div className="bg-card border border-border rounded overflow-hidden">
-                {rows.length === 0 ? (
+            <div className={cn(isBrandNew ? "col-span-12" : "col-span-9")}>
+              <div className={cn(
+                "bg-card border border-border rounded overflow-hidden",
+                screenState === "error" && "border-l-4 border-l-destructive"
+              )}>
+                {screenState === "error" ? (
+                  <div className="px-6 py-12 text-center">
+                    <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-3" />
+                    <div className="text-[14px] font-semibold text-destructive">Couldn't load your call history.</div>
+                    <div className="text-[12px] text-muted-foreground mt-1 max-w-md mx-auto">
+                      Salesforce returned an error. Your data isn't lost — try refreshing the page.
+                    </div>
+                    <div className="mt-4 flex items-center justify-center gap-3">
+                      <button
+                        onClick={() => setScreenState("loading")}
+                        className="h-8 px-4 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 flex items-center gap-1.5"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" /> Refresh
+                      </button>
+                      <button
+                        onClick={() => setShowErrorDetails((v) => !v)}
+                        className="text-[11px] text-primary hover:underline"
+                      >
+                        {showErrorDetails ? "Hide" : "View"} error details
+                      </button>
+                    </div>
+                    {showErrorDetails && (
+                      <div className="mt-3 mx-auto max-w-md text-left bg-secondary border border-border rounded px-3 py-2 text-[11px] font-mono text-muted-foreground">
+                        Request ID: 7d2c9f3e-4a1b-419c-bc92-1f3d80a2c114<br />
+                        Status: 503 SERVICE_UNAVAILABLE · pulse-api/v3
+                      </div>
+                    )}
+                  </div>
+                ) : screenState === "loading" ? (
+                  <table className="w-full text-[12px]">
+                    <thead className="bg-secondary/60 border-b border-border text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <tr>
+                        <Th>Contact</Th><Th>Company</Th><Th>Call Date</Th><Th>Duration</Th>
+                        <Th>Outcome</Th><Th>Fields</Th><Th>Synced At</Th>
+                        <Th className="text-right pr-3">Action</Th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {Array.from({ length: 8 }).map((_, i) => (
+                        <tr key={i}>
+                          <td className="px-3 py-2.5"><Skeleton className="h-3 w-28" /></td>
+                          <td className="px-3 py-2.5"><Skeleton className="h-3 w-24" /></td>
+                          <td className="px-3 py-2.5"><Skeleton className="h-3 w-20" /></td>
+                          <td className="px-3 py-2.5"><Skeleton className="h-3 w-12" /></td>
+                          <td className="px-3 py-2.5"><Skeleton className="h-3 w-16 rounded-full" /></td>
+                          <td className="px-3 py-2.5"><Skeleton className="h-3 w-8" /></td>
+                          <td className="px-3 py-2.5"><Skeleton className="h-3 w-20" /></td>
+                          <td className="px-3 py-2.5 text-right pr-3"><Skeleton className="h-6 w-12 ml-auto" /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : isBrandNew ? (
+                  <div className="px-6 py-16 text-center">
+                    <div className="w-12 h-12 rounded-full bg-secondary border border-border grid place-items-center mx-auto mb-3">
+                      <Inbox className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <div className="text-[14px] font-semibold">You haven't reviewed any calls yet.</div>
+                    <div className="text-[12px] text-muted-foreground mt-1">Once you sync your first call, it'll show up here.</div>
+                    <button
+                      onClick={() => navigate("/")}
+                      className="mt-4 h-8 px-4 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                    >
+                      Go to Today's Queue
+                    </button>
+                  </div>
+                ) : rows.length === 0 ? (
                   <div className="px-6 py-16 text-center">
                     <Filter className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-                    <div className="text-[14px] font-medium">No reviewed calls match these filters</div>
-                    <div className="text-[12px] text-muted-foreground mt-1">Try widening your search.</div>
-                    <button onClick={clearFilters} className="mt-4 text-[12px] text-primary hover:underline font-medium">
-                      Clear filters
-                    </button>
+                    <div className="text-[14px] font-medium">No reviewed calls match these filters.</div>
+                    <div className="text-[12px] text-muted-foreground mt-1">Try expanding the date range or clearing the outcome filter.</div>
+                    <div className="mt-4 flex items-center justify-center gap-2">
+                      <button onClick={clearFilters} className="h-8 px-3 text-[12px] border border-border rounded hover:bg-secondary">
+                        Clear All Filters
+                      </button>
+                      <button
+                        onClick={() => { clearFilters(); setTime("This Month"); }}
+                        className="h-8 px-3 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                      >
+                        View This Month
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <table className="w-full text-[12px]">
@@ -197,8 +274,8 @@ export default function PreviousCalls() {
               </div>
             </div>
 
-            {/* Stats card */}
-            <div className="col-span-3">
+            {/* Stats card — hidden for brand-new users */}
+            {!isBrandNew && <div className="col-span-3">
               <div className="bg-card border border-border rounded">
                 <div className="px-3 py-2 border-b border-border">
                   <div className="text-[13px] font-semibold">Your Review Stats</div>
@@ -216,7 +293,7 @@ export default function PreviousCalls() {
                   </div>
                 </div>
               </div>
-            </div>
+            </div>}
           </div>
         </main>
       </div>
