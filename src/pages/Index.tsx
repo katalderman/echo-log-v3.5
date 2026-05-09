@@ -422,7 +422,9 @@ function PathBar({ step }: { step: number }) {
           );
         })}
       </div>
-      <button className="ml-2 h-8 px-3 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 shrink-0">
+    </div>
+  );
+}
         Mark Status as Complete
       </button>
     </div>
