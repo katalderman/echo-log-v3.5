@@ -257,6 +257,7 @@ const Index = () => {
                     expanded={expandedSources.has(f.key)}
                     onToggleSource={() => toggleSource(f.key)}
                     onConfirm={() => toggleConfirm(f.key)}
+                    onSkip={() => toggleSkip(f.key)}
                     diff={voiceDiff?.includes(f.key)}
                   />
                 ))}
