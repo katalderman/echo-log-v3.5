@@ -69,6 +69,9 @@ export default function PreviousCalls() {
         <BreadcrumbTabs crumbs={[{ label: "Calls", to: "/" }, { label: "Previous Reviews" }]} />
 
         <main className="flex-1 px-6 py-4 space-y-4">
+          <div className="flex justify-end">
+            <StateControls value={screenState} onChange={setScreenState} />
+          </div>
           {/* Page header */}
           <div className="flex items-center gap-4">
             <div className="flex-1">
