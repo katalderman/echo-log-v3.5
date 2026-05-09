@@ -36,6 +36,11 @@ export default function Complete() {
   const nextCall = queueRest[0];
 
   const [drafts, setDrafts] = useState<Array<{ id: string; contact: string; company: string; duration: string; date: string; fieldsConfirmed: number; fieldsTotal: number }>>([]);
+  const [syncedPayload, setSyncedPayload] = useState<{
+    summary?: string;
+    syncedFields?: { key: string; label: string; value: string; edited?: boolean; original?: string; source: string }[];
+    skippedFields?: { key: string; label: string; value: string }[];
+  } | null>(null);
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem("pulse:drafts") || "[]");
@@ -43,7 +48,21 @@ export default function Complete() {
     } catch {
       setDrafts([]);
     }
-  }, []);
+    if (!isHistory) {
+      try {
+        const raw = localStorage.getItem("pulse:synced:maya-chen");
+        if (raw) setSyncedPayload(JSON.parse(raw));
+      } catch {}
+    }
+  }, [isHistory]);
+
+  // Use what was actually synced when available; otherwise fall back to the canned data
+  const displayedFields = syncedPayload?.syncedFields?.length
+    ? syncedPayload.syncedFields.map((f) => ({ label: f.label, value: f.value, source: f.source, edited: f.edited }))
+    : CONFIRMED_FIELDS.map((f) => ({ ...f, edited: false }));
+  const skippedFields = syncedPayload?.skippedFields ?? [];
+  const displayedSummary = syncedPayload?.summary;
+  const fieldCount = displayedFields.length;
 
   useEffect(() => {
     if (isHistory) return;
