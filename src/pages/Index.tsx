@@ -1044,7 +1044,7 @@ function SyncModal({
             <div className="px-5 py-4 grid grid-cols-3 gap-3">
               <div className="bg-info border border-info-border rounded px-3 py-2.5">
                 <div className="text-[20px] font-semibold leading-tight num text-primary flex items-center gap-1.5">
-                  7
+                  {fieldCount}
                   {editedCount > 0 && (
                     <span className="inline-flex items-center gap-1 text-[10px] font-medium text-warning bg-warning/10 border border-warning/40 px-1.5 py-0.5 rounded">
                       <span className="w-1.5 h-1.5 rounded-full bg-warning" /> {editedCount} edited
@@ -1052,7 +1052,7 @@ function SyncModal({
                   )}
                 </div>
                 <div className="text-[11px] font-medium">Fields</div>
-                <div className="text-[10px] text-muted-foreground">confirmed</div>
+                <div className="text-[10px] text-muted-foreground">{skippedCount > 0 ? `confirmed · ${skippedCount} skipped` : "confirmed"}</div>
               </div>
               <div className="bg-info border border-info-border rounded px-3 py-2.5">
                 <div className="text-[20px] font-semibold leading-tight num text-primary">1</div>
