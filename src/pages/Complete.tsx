@@ -230,7 +230,7 @@ export default function Complete() {
                 <div className="flex items-start gap-2">
                   <Quote className="w-4 h-4 text-success shrink-0 mt-0.5" />
                   <p className="text-[13px] leading-relaxed text-muted-foreground">
-                    Maya Chen evaluating Pulse to replace stalled internal CRM tool. CFO Marcus Lee owns budget; Maya holds technical sign-off. Q2 implementation, 60-day procurement. Open objections: SSO/audit, Pipedrive migration. Sentiment positive.
+                    {displayedSummary ?? "Maya Chen evaluating Pulse to replace stalled internal CRM tool. CFO Marcus Lee owns budget; Maya holds technical sign-off. Q2 implementation, 60-day procurement. Open objections: SSO/audit, Pipedrive migration. Sentiment positive."}
                   </p>
                 </div>
                 <div className="text-[11px] text-muted-foreground mt-2 pt-2 border-t border-border flex items-center gap-1">
