@@ -193,7 +193,7 @@ const Index = () => {
         <StatBanner onImport={() => setShowImport(true)} />
 
         <main className="flex-1 px-6 py-4 space-y-4">
-          <RecordHeader synced={synced} syncedAgo={syncedAgo} onSync={() => setShowSync(true)} />
+          <RecordHeader synced={synced} syncedAgo={syncedAgo} onSync={() => setShowSync(true)} allConfirmed={confirmedCount === 7} confirmedCount={confirmedCount} />
           <SourceBanner />
           <PathBar step={pathStep} />
 
@@ -204,8 +204,7 @@ const Index = () => {
               <CenterHeader
                 summaryReviewed={summaryReviewed}
                 synced={synced}
-                syncedAgo={syncedAgo}
-                allConfirmed={confirmedCount === 7}
+                confirmedCount={confirmedCount}
                 onConfirmAll={confirmAll}
               />
               <SummaryBlock
@@ -217,10 +216,12 @@ const Index = () => {
                 setReviewed={setSummaryReviewed}
               />
               <div className="space-y-2">
-                {fields.map((f) => (
+                {fields.map((f, i) => (
                   <FieldCard
                     key={f.key}
                     field={f}
+                    position={i + 1}
+                    total={fields.length}
                     expanded={expandedSources.has(f.key)}
                     onToggleSource={() => toggleSource(f.key)}
                     onConfirm={() => toggleConfirm(f.key)}
@@ -307,7 +308,9 @@ function StatTile({ value, label, sub, good }: { value: string; label: string; s
 // Record header
 // ============================================================================
 
-function RecordHeader({ synced, syncedAgo, onSync }: { synced: boolean; syncedAgo: number; onSync: () => void }) {
+function RecordHeader({ synced, syncedAgo, onSync, allConfirmed, confirmedCount }: { synced: boolean; syncedAgo: number; onSync: () => void; allConfirmed: boolean; confirmedCount: number }) {
+  const syncDisabled = !synced && !allConfirmed;
+  const tooltip = syncDisabled ? `Confirm all 7 fields below before syncing to Salesforce. (${confirmedCount} of 7 confirmed)` : "";
   return (
     <div className="bg-card border border-border rounded p-4 flex items-center gap-4">
       <div className="w-12 h-12 rounded-full bg-teal grid place-items-center shrink-0">
@@ -331,13 +334,15 @@ function RecordHeader({ synced, syncedAgo, onSync }: { synced: boolean; syncedAg
       <div className="flex items-center gap-2 shrink-0">
         <button className="h-8 px-3 text-[12px] border border-border rounded hover:bg-secondary">Skip for Now</button>
         <button className="h-8 px-3 text-[12px] border border-border rounded hover:bg-secondary">Save Draft</button>
-        <button
-          onClick={onSync}
-          disabled={synced}
-          className="h-8 px-4 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
-        >
-          {synced ? "Synced" : "Confirm & Sync to Salesforce"}
-        </button>
+        <span title={tooltip} className={cn(syncDisabled && "cursor-not-allowed")}>
+          <button
+            onClick={onSync}
+            disabled={synced || syncDisabled}
+            className="h-8 px-4 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed disabled:pointer-events-none"
+          >
+            {synced ? "Synced" : "Confirm & Sync to Salesforce"}
+          </button>
+        </span>
       </div>
     </div>
   );
@@ -455,34 +460,52 @@ function Row({ label, value, edit }: { label: string; value: React.ReactNode; ed
 // Center — Summary + fields + amendment
 // ============================================================================
 
-function CenterHeader({ summaryReviewed, synced, syncedAgo, allConfirmed, onConfirmAll }: {
-  summaryReviewed: boolean; synced: boolean; syncedAgo: number; allConfirmed: boolean; onConfirmAll: () => void;
+function CenterHeader({ summaryReviewed, synced, confirmedCount, onConfirmAll }: {
+  summaryReviewed: boolean; synced: boolean; confirmedCount: number; onConfirmAll: () => void;
 }) {
+  const total = 7;
+  const allConfirmed = confirmedCount === total;
+  const remaining = total - confirmedCount;
+  const pct = (confirmedCount / total) * 100;
   return (
-    <div className="flex items-center justify-between">
-      <div>
-        <div className="text-[13px] font-semibold flex items-center gap-2">
-          AI Summary & CRM Fields
-          {synced ? (
-            <span className="text-[10px] font-bold text-success bg-success/10 border border-success/30 px-2 py-0.5 rounded">
-              ✓ SYNCED {syncedAgo === 0 ? "JUST NOW" : `${syncedAgo} MIN AGO`}
-            </span>
-          ) : (
-            <span className="text-[10px] font-bold text-warning-foreground bg-[#FFF7E6] border border-warning/40 px-2 py-0.5 rounded">
-              DRAFT — NOT YET SYNCED
-            </span>
-          )}
+    <div className="space-y-2">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[15px] font-semibold leading-tight">
+            Review &amp; Confirm <span className="text-muted-foreground font-normal">· {total} Fields from Your Call</span>
+          </div>
+          <div className="text-[12px] text-muted-foreground mt-1">
+            Pulse drafted these from your Zoom call. Confirm each field is accurate, then sync to Salesforce.
+          </div>
         </div>
-        <div className="text-[11px] text-muted-foreground mt-0.5">AI summary drafted from your call · 2 min ago</div>
+        {allConfirmed ? (
+          <span className="h-8 px-3 text-[12px] font-medium bg-success/10 text-success border border-success/30 rounded flex items-center gap-1.5 shrink-0">
+            <Check className="w-3.5 h-3.5" /> All Fields Confirmed
+          </span>
+        ) : (
+          <button
+            onClick={onConfirmAll}
+            disabled={!summaryReviewed}
+            className="h-8 px-3 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            title={!summaryReviewed ? "Review the summary first" : ""}
+          >
+            {confirmedCount === 0 ? "Confirm All Fields" : `Confirm Remaining (${remaining})`}
+          </button>
+        )}
       </div>
-      <button
-        onClick={onConfirmAll}
-        disabled={!summaryReviewed || allConfirmed}
-        className="h-8 px-3 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
-        title={!summaryReviewed ? "Review the summary first" : ""}
-      >
-        {allConfirmed ? "All confirmed ✓" : "Confirm All Fields"}
-      </button>
+      <div className="space-y-1">
+        <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+          <div
+            className="h-full bg-success transition-all duration-300"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className={cn("text-[11px] font-medium", allConfirmed ? "text-success" : "text-muted-foreground")}>
+          {allConfirmed
+            ? `Ready to sync · all ${total} fields confirmed`
+            : `${confirmedCount} of ${total} confirmed`}
+        </div>
+      </div>
     </div>
   );
 }
@@ -528,21 +551,29 @@ function SummaryBlock({ summary, setSummary, editing, setEditing, reviewed, setR
   );
 }
 
-function FieldCard({ field, expanded, onToggleSource, onConfirm, diff }: {
-  field: Field; expanded: boolean; onToggleSource: () => void; onConfirm: () => void; diff?: boolean;
+function FieldCard({ field, position, total, expanded, onToggleSource, onConfirm, diff }: {
+  field: Field; position: number; total: number; expanded: boolean; onToggleSource: () => void; onConfirm: () => void; diff?: boolean;
 }) {
   const dot = field.confidence === "high" ? "bg-success" : field.confidence === "med" ? "bg-warning" : "bg-destructive";
   const dotLabel = field.confidence === "high" ? "High confidence" : field.confidence === "med" ? "Medium confidence" : "Low confidence";
   return (
     <div
       className={cn(
-        "bg-card border border-border rounded transition-all",
+        "bg-card border border-border rounded transition-all relative",
         field.confirmed && "border-l-4 border-l-success",
         diff && "ring-2 ring-primary/50 bg-accent/30"
       )}
     >
+      <span
+        className={cn(
+          "absolute top-2 right-3 font-mono text-[10px] tabular-nums",
+          field.confirmed ? "text-success" : "text-muted-foreground"
+        )}
+      >
+        {position} of {total}
+      </span>
       <div className="p-3 flex items-start gap-3">
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 pr-12">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{field.label}</span>
             <span className={cn("w-2 h-2 rounded-full", dot)} title={dotLabel} />
@@ -550,10 +581,10 @@ function FieldCard({ field, expanded, onToggleSource, onConfirm, diff }: {
               <Video className="w-2.5 h-2.5" /> From your call
             </span>
             {!field.confirmed && !diff && (
-              <span className="text-[10px] font-bold text-warning-foreground bg-[#FFF7E6] border border-warning/40 px-1.5 py-0.5 rounded ml-auto">Draft</span>
+              <span className="text-[10px] font-bold text-warning-foreground bg-[#FFF7E6] border border-warning/40 px-1.5 py-0.5 rounded">Draft</span>
             )}
             {diff && (
-              <span className="text-[10px] font-bold text-primary bg-accent border border-primary/30 px-1.5 py-0.5 rounded ml-auto">Voice update</span>
+              <span className="text-[10px] font-bold text-primary bg-accent border border-primary/30 px-1.5 py-0.5 rounded">Voice update</span>
             )}
           </div>
           <div className="text-[14px] text-foreground mt-1">{field.value}</div>
