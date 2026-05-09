@@ -809,6 +809,44 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
   const [syncing, setSyncing] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  const ORIGINAL = [
+    { key: "outcome", label: "Call outcome", value: "Qualified — moving to security review" },
+    { key: "next", label: "Next step", value: "Send SOC 2 + sandbox access by Fri Apr 30" },
+    { key: "dm", label: "Decision maker", value: "Marcus Lee (CFO) — budget; Maya — technical" },
+    { key: "budget", label: "Budget signal", value: "$60–80K ACV envelope confirmed" },
+    { key: "timeline", label: "Timeline", value: "Q2 2026 implementation; 60-day procurement" },
+    { key: "objections", label: "Objections", value: "SSO/audit logs + Pipedrive migration" },
+    { key: "sentiment", label: "Sentiment", value: "Positive — exec air-cover from CEO" },
+  ];
+
+  type Row = { key: string; label: string; value: string; original: string; edited: boolean };
+  const [rows, setRows] = useState<Row[]>(
+    ORIGINAL.map((f) => ({ ...f, original: f.value, edited: false }))
+  );
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+
+  const editedCount = rows.filter((r) => r.edited).length;
+
+  const startEdit = (r: Row) => {
+    setEditingKey(r.key);
+    setDraft(r.value);
+  };
+  const saveEdit = () => {
+    if (!editingKey) return;
+    setRows((arr) =>
+      arr.map((r) =>
+        r.key === editingKey
+          ? { ...r, value: draft.trim() || r.value, edited: (draft.trim() || r.value) !== r.original }
+          : r
+      )
+    );
+    setEditingKey(null);
+  };
+  const revert = (key: string) => {
+    setRows((arr) => arr.map((r) => (r.key === key ? { ...r, value: r.original, edited: false } : r)));
+  };
+
   useEffect(() => {
     if (!syncing) return;
     const t = window.setInterval(() => setProgress((p) => Math.min(100, p + 6)), 80);
@@ -822,24 +860,14 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
     }
   }, [progress, onConfirm]);
 
-  const fields = [
-    { label: "Call outcome", value: "Qualified — moving to security review" },
-    { label: "Next step", value: "Send SOC 2 + sandbox access by Fri Apr 30" },
-    { label: "Decision maker", value: "Marcus Lee (CFO) — budget; Maya — technical" },
-    { label: "Budget signal", value: "$60–80K ACV envelope confirmed" },
-    { label: "Timeline", value: "Q2 2026 implementation; 60-day procurement" },
-    { label: "Objections", value: "SSO/audit logs + Pipedrive migration" },
-    { label: "Sentiment", value: "Positive — exec air-cover from CEO" },
-  ];
-
   return (
     <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center px-4 py-8">
-      <div className="bg-card border border-border rounded shadow-xl max-w-xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-card border border-border rounded shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="px-5 py-4 border-b border-border flex items-start justify-between">
           <div>
             <div className="font-semibold text-[22px] leading-tight">Sync to Salesforce?</div>
             <div className="text-[13px] text-muted-foreground mt-1">
-              7 fields, 1 summary, and 1 voice note will be added to Maya Chen's contact record.
+              Review and edit if needed. 7 fields, 1 summary, and 1 voice note will be added to Maya Chen's contact record.
             </div>
           </div>
           {!syncing && (
@@ -862,17 +890,28 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
         ) : (
           <>
             <div className="px-5 py-4 grid grid-cols-3 gap-3">
-              {[
-                { v: "7", l: "Fields", s: "confirmed" },
-                { v: "1", l: "Summary", s: "draft" },
-                { v: "1", l: "Activity", s: "call logged" },
-              ].map((s) => (
-                <div key={s.l} className="bg-info border border-info-border rounded px-3 py-2.5">
-                  <div className="text-[20px] font-semibold leading-tight num text-primary">{s.v}</div>
-                  <div className="text-[11px] font-medium">{s.l}</div>
-                  <div className="text-[10px] text-muted-foreground">{s.s}</div>
+              <div className="bg-info border border-info-border rounded px-3 py-2.5">
+                <div className="text-[20px] font-semibold leading-tight num text-primary flex items-center gap-1.5">
+                  7
+                  {editedCount > 0 && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-warning bg-warning/10 border border-warning/40 px-1.5 py-0.5 rounded">
+                      <span className="w-1.5 h-1.5 rounded-full bg-warning" /> {editedCount} edited
+                    </span>
+                  )}
                 </div>
-              ))}
+                <div className="text-[11px] font-medium">Fields</div>
+                <div className="text-[10px] text-muted-foreground">confirmed</div>
+              </div>
+              <div className="bg-info border border-info-border rounded px-3 py-2.5">
+                <div className="text-[20px] font-semibold leading-tight num text-primary">1</div>
+                <div className="text-[11px] font-medium">Summary</div>
+                <div className="text-[10px] text-muted-foreground">confirmed</div>
+              </div>
+              <div className="bg-info border border-info-border rounded px-3 py-2.5">
+                <div className="text-[20px] font-semibold leading-tight num text-primary">1</div>
+                <div className="text-[11px] font-medium">Activity</div>
+                <div className="text-[10px] text-muted-foreground">call logged</div>
+              </div>
             </div>
 
             <div className="px-5 pb-4">
@@ -882,23 +921,96 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
               >
                 {showLineage ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                 What changes in Salesforce
+                {editedCount > 0 && (
+                  <span className="ml-auto text-[10px] font-medium text-warning bg-warning/10 border border-warning/40 px-1.5 py-0.5 rounded">
+                    {editedCount} edited
+                  </span>
+                )}
               </button>
               {showLineage && (
                 <div className="border border-t-0 border-border rounded-b -mt-px divide-y divide-border animate-fade-in">
-                  {fields.map((f) => (
-                    <div key={f.label} className="px-3 py-2 flex items-start gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{f.label}</div>
-                        <div className="text-[12px]">{f.value}</div>
+                  {rows.map((f) => {
+                    const isEditing = editingKey === f.key;
+                    return (
+                      <div
+                        key={f.key}
+                        className={cn(
+                          "group px-3 py-2 transition-colors",
+                          !isEditing && "hover:bg-[#F8FAFD] cursor-pointer",
+                          f.edited && "border-l-2 border-l-warning"
+                        )}
+                        onClick={() => !isEditing && startEdit(f)}
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{f.label}</div>
+                            {isEditing ? (
+                              <div className="flex items-center gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  autoFocus
+                                  value={draft}
+                                  onChange={(e) => setDraft(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") saveEdit();
+                                    if (e.key === "Escape") setEditingKey(null);
+                                  }}
+                                  className="flex-1 text-[12px] px-2 py-1 border border-primary rounded outline-none ring-1 ring-primary/30 bg-card"
+                                />
+                                <button
+                                  onClick={saveEdit}
+                                  className="h-7 w-7 grid place-items-center bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                                  title="Save"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setEditingKey(null)}
+                                  className="h-7 w-7 grid place-items-center border border-border text-muted-foreground rounded hover:bg-secondary"
+                                  title="Cancel"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="text-[12px] mt-0.5">{f.value}</div>
+                            )}
+                            <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                              {f.edited ? (
+                                <span className="group/badge relative text-[10px] bg-warning/10 border border-warning/40 text-warning px-1.5 py-0.5 rounded inline-flex items-center gap-1">
+                                  <Pencil className="w-2.5 h-2.5" />
+                                  Edited by you · was: <span className="italic max-w-[180px] truncate">"{f.original}"</span>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); revert(f.key); }}
+                                    className="ml-1 text-primary hover:underline opacity-0 group-hover/badge:opacity-100 transition-opacity"
+                                  >
+                                    Revert to AI value
+                                  </button>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] bg-info border border-info-border text-primary px-1.5 py-0.5 rounded inline-flex items-center gap-1">
+                                  <Video className="w-2.5 h-2.5" /> From your call with Maya
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {!isEditing && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); startEdit(f); }}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-secondary rounded text-primary shrink-0"
+                              title="Edit"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <span className="text-[10px] bg-info border border-info-border text-primary px-1.5 py-0.5 rounded shrink-0 flex items-center gap-1 mt-2">
-                        <Video className="w-2.5 h-2.5" /> From your call with Maya
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
-              <div className="text-[11px] text-muted-foreground mt-3">This action can be undone within 24 hours.</div>
+              <div className="text-[11px] text-muted-foreground mt-3">
+                Edits are saved on Confirm & Sync. This action can be undone within 24 hours.
+              </div>
             </div>
 
             <div className="px-5 py-3 border-t border-border flex justify-end gap-2">
