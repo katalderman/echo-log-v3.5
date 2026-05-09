@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Home, Phone, Users, Building2, BarChart3, Settings, Search, HelpCircle, Bell,
-  ChevronRight, ChevronDown, X, Check, Pencil, Video, FileText, Upload, Link2,
+  Phone, ChevronRight, ChevronDown, X, Check, Pencil, Video, FileText, Upload, Link2,
   Mic, Square, Bold, Italic, Strikethrough, List, ListOrdered, AtSign,
-  CheckCircle2, AlertCircle, Circle, RefreshCw, Filter, Mail, ClipboardList,
-  StickyNote, Quote, Eye, ArrowRight, Plus, Plug, FileUp, Calendar,
+  CheckCircle2, RefreshCw, Filter, Mail, ClipboardList,
+  StickyNote, Quote, Eye, Plus, Plug, FileUp, Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NavRail, TopBar, BreadcrumbTabs } from "@/components/pulse/Shell";
 
 // ============================================================================
 // Types & mock data
