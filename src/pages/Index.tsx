@@ -460,34 +460,52 @@ function Row({ label, value, edit }: { label: string; value: React.ReactNode; ed
 // Center — Summary + fields + amendment
 // ============================================================================
 
-function CenterHeader({ summaryReviewed, synced, syncedAgo, allConfirmed, onConfirmAll }: {
-  summaryReviewed: boolean; synced: boolean; syncedAgo: number; allConfirmed: boolean; onConfirmAll: () => void;
+function CenterHeader({ summaryReviewed, synced, confirmedCount, onConfirmAll }: {
+  summaryReviewed: boolean; synced: boolean; confirmedCount: number; onConfirmAll: () => void;
 }) {
+  const total = 7;
+  const allConfirmed = confirmedCount === total;
+  const remaining = total - confirmedCount;
+  const pct = (confirmedCount / total) * 100;
   return (
-    <div className="flex items-center justify-between">
-      <div>
-        <div className="text-[13px] font-semibold flex items-center gap-2">
-          AI Summary & CRM Fields
-          {synced ? (
-            <span className="text-[10px] font-bold text-success bg-success/10 border border-success/30 px-2 py-0.5 rounded">
-              ✓ SYNCED {syncedAgo === 0 ? "JUST NOW" : `${syncedAgo} MIN AGO`}
-            </span>
-          ) : (
-            <span className="text-[10px] font-bold text-warning-foreground bg-[#FFF7E6] border border-warning/40 px-2 py-0.5 rounded">
-              DRAFT — NOT YET SYNCED
-            </span>
-          )}
+    <div className="space-y-2">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[15px] font-semibold leading-tight">
+            Review &amp; Confirm <span className="text-muted-foreground font-normal">· {total} Fields from Your Call</span>
+          </div>
+          <div className="text-[12px] text-muted-foreground mt-1">
+            Pulse drafted these from your Zoom call. Confirm each field is accurate, then sync to Salesforce.
+          </div>
         </div>
-        <div className="text-[11px] text-muted-foreground mt-0.5">AI summary drafted from your call · 2 min ago</div>
+        {allConfirmed ? (
+          <span className="h-8 px-3 text-[12px] font-medium bg-success/10 text-success border border-success/30 rounded flex items-center gap-1.5 shrink-0">
+            <Check className="w-3.5 h-3.5" /> All Fields Confirmed
+          </span>
+        ) : (
+          <button
+            onClick={onConfirmAll}
+            disabled={!summaryReviewed}
+            className="h-8 px-3 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            title={!summaryReviewed ? "Review the summary first" : ""}
+          >
+            {confirmedCount === 0 ? "Confirm All Fields" : `Confirm Remaining (${remaining})`}
+          </button>
+        )}
       </div>
-      <button
-        onClick={onConfirmAll}
-        disabled={!summaryReviewed || allConfirmed}
-        className="h-8 px-3 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
-        title={!summaryReviewed ? "Review the summary first" : ""}
-      >
-        {allConfirmed ? "All confirmed ✓" : "Confirm All Fields"}
-      </button>
+      <div className="space-y-1">
+        <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+          <div
+            className="h-full bg-success transition-all duration-300"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className={cn("text-[11px] font-medium", allConfirmed ? "text-success" : "text-muted-foreground")}>
+          {allConfirmed
+            ? `Ready to sync · all ${total} fields confirmed`
+            : `${confirmedCount} of ${total} confirmed`}
+        </div>
+      </div>
     </div>
   );
 }
