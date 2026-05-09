@@ -183,7 +183,11 @@ const Index = () => {
       <NavRail />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar />
-        <BreadcrumbTabs />
+        <BreadcrumbTabs
+          crumbs={[{ label: "Calls", to: "/" }, { label: "Active Review" }]}
+          tab={{ label: "Maya Chen — Northwind Robotics", closable: true }}
+          tabIcon={Phone}
+        />
         <StatBanner onImport={() => setShowImport(true)} />
 
         <main className="flex-1 px-6 py-4 space-y-4">
