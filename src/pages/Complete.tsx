@@ -218,7 +218,10 @@ export default function Complete() {
                       ✓ READ-ONLY
                     </span>
                   </div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">7 fields written to Maya Chen's contact record.</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    {fieldCount} field{fieldCount === 1 ? "" : "s"} written to Maya Chen's contact record
+                    {skippedFields.length > 0 ? ` · ${skippedFields.length} skipped` : ""}.
+                  </div>
                 </div>
               </div>
 
