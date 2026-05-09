@@ -191,34 +191,7 @@ const Index = () => {
         <StatBanner onImport={() => setShowImport(true)} />
 
         <main className="flex-1 px-6 py-4 space-y-4">
-          <RecordHeader
-            synced={synced}
-            syncedAgo={syncedAgo}
-            onSync={() => setShowSync(true)}
-            allConfirmed={confirmedCount === 7}
-            confirmedCount={confirmedCount}
-            onSaveDraft={() => {
-              try {
-                const draft = {
-                  id: "maya-chen",
-                  contact: "Maya Chen",
-                  company: "Northwind Robotics",
-                  duration: "24m 18s",
-                  date: "Apr 28, 2026",
-                  fieldsConfirmed: confirmedCount,
-                  fieldsTotal: 7,
-                  savedAt: new Date().toISOString(),
-                };
-                const existing = JSON.parse(localStorage.getItem("pulse:drafts") || "[]");
-                const next = [draft, ...existing.filter((d: any) => d.id !== draft.id)];
-                localStorage.setItem("pulse:drafts", JSON.stringify(next));
-              } catch {}
-              toast.success("Draft saved", {
-                description: "Pick up where you left off from your queue.",
-              });
-              navigate("/calls/complete/maya-chen");
-            }}
-          />
+          <RecordHeader synced={synced} syncedAgo={syncedAgo} />
           <SourceBanner />
           <PathBar step={pathStep} />
 
@@ -231,6 +204,28 @@ const Index = () => {
                 synced={synced}
                 confirmedCount={confirmedCount}
                 onConfirmAll={confirmAll}
+                onSync={() => setShowSync(true)}
+                onSaveDraft={() => {
+                  try {
+                    const draft = {
+                      id: "maya-chen",
+                      contact: "Maya Chen",
+                      company: "Northwind Robotics",
+                      duration: "24m 18s",
+                      date: "Apr 28, 2026",
+                      fieldsConfirmed: confirmedCount,
+                      fieldsTotal: 7,
+                      savedAt: new Date().toISOString(),
+                    };
+                    const existing = JSON.parse(localStorage.getItem("pulse:drafts") || "[]");
+                    const next = [draft, ...existing.filter((d: any) => d.id !== draft.id)];
+                    localStorage.setItem("pulse:drafts", JSON.stringify(next));
+                  } catch {}
+                  toast.success("Draft saved", {
+                    description: "Pick up where you left off from your queue.",
+                  });
+                  navigate("/calls/complete/maya-chen");
+                }}
               />
               <SummaryBlock
                 summary={summary}
