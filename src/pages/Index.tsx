@@ -113,10 +113,12 @@ const Index = () => {
   const recTimer = useRef<number | null>(null);
 
   const confirmedCount = fields.filter((f) => f.confirmed).length;
+  const skippedCount = fields.filter((f) => f.skipped).length;
+  const resolvedCount = confirmedCount + skippedCount;
 
   useEffect(() => {
-    if (confirmedCount === 7 && pathStep < 3) setPathStep(3);
-  }, [confirmedCount, pathStep]);
+    if (resolvedCount === 7 && pathStep < 3) setPathStep(3);
+  }, [resolvedCount, pathStep]);
 
   useEffect(() => {
     if (!synced) return;
@@ -125,13 +127,22 @@ const Index = () => {
   }, [synced]);
 
   const toggleConfirm = (k: FieldKey) => {
-    setFields((arr) => arr.map((f) => (f.key === k ? { ...f, confirmed: !f.confirmed } : f)));
+    setFields((arr) => arr.map((f) => (f.key === k ? { ...f, confirmed: !f.confirmed, skipped: false } : f)));
+  };
+  const toggleSkip = (k: FieldKey) => {
+    setFields((arr) => arr.map((f) => {
+      if (f.key !== k) return f;
+      const next = !f.skipped;
+      if (next) toast(`"${f.label}" skipped`, { description: "This field will not be synced to Salesforce." });
+      return { ...f, skipped: next, confirmed: next ? false : f.confirmed };
+    }));
   };
   const confirmAll = () => {
     setSummaryReviewed(true);
-    setFields((arr) => arr.map((f) => ({ ...f, confirmed: true })));
+    setFields((arr) => arr.map((f) => f.skipped ? f : ({ ...f, confirmed: true })));
     setPathStep(3);
-    toast.success("All 7 fields confirmed");
+    const willConfirm = fields.filter(f => !f.skipped && !f.confirmed).length;
+    toast.success(`${willConfirm} field${willConfirm === 1 ? "" : "s"} confirmed`);
   };
   const toggleSource = (k: FieldKey) => {
     setExpandedSources((s) => {
