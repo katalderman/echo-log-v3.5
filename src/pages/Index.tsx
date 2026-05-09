@@ -584,8 +584,8 @@ function SummaryBlock({ summary, setSummary, editing, setEditing, reviewed, setR
   );
 }
 
-function FieldCard({ field, position, total, expanded, onToggleSource, onConfirm, diff }: {
-  field: Field; position: number; total: number; expanded: boolean; onToggleSource: () => void; onConfirm: () => void; diff?: boolean;
+function FieldCard({ field, position, total, expanded, onToggleSource, onConfirm, onSkip, diff }: {
+  field: Field; position: number; total: number; expanded: boolean; onToggleSource: () => void; onConfirm: () => void; onSkip: () => void; diff?: boolean;
 }) {
   const dot = field.confidence === "high" ? "bg-success" : field.confidence === "med" ? "bg-warning" : "bg-destructive";
   const dotLabel = field.confidence === "high" ? "High confidence" : field.confidence === "med" ? "Medium confidence" : "Low confidence";
@@ -594,13 +594,14 @@ function FieldCard({ field, position, total, expanded, onToggleSource, onConfirm
       className={cn(
         "bg-card border border-border rounded transition-all relative",
         field.confirmed && "border-l-4 border-l-success",
+        field.skipped && "border-l-4 border-l-muted-foreground/50 opacity-70",
         diff && "ring-2 ring-primary/50 bg-accent/30"
       )}
     >
       <span
         className={cn(
           "absolute top-2 right-3 font-mono text-[10px] tabular-nums",
-          field.confirmed ? "text-success" : "text-muted-foreground"
+          field.confirmed ? "text-success" : field.skipped ? "text-muted-foreground" : "text-muted-foreground"
         )}
       >
         {position} of {total}
@@ -613,14 +614,19 @@ function FieldCard({ field, position, total, expanded, onToggleSource, onConfirm
             <span className="text-[10px] bg-info border border-info-border text-primary px-1.5 py-0.5 rounded flex items-center gap-1">
               <Video className="w-2.5 h-2.5" /> From your call
             </span>
-            {!field.confirmed && !diff && (
+            {!field.confirmed && !field.skipped && !diff && (
               <span className="text-[10px] font-bold text-warning-foreground bg-[#FFF7E6] border border-warning/40 px-1.5 py-0.5 rounded">Draft</span>
+            )}
+            {field.skipped && (
+              <span className="text-[10px] font-bold text-muted-foreground bg-secondary border border-border px-1.5 py-0.5 rounded flex items-center gap-1">
+                <X className="w-2.5 h-2.5" /> Skipped — won't sync
+              </span>
             )}
             {diff && (
               <span className="text-[10px] font-bold text-primary bg-accent border border-primary/30 px-1.5 py-0.5 rounded">Voice update</span>
             )}
           </div>
-          <div className="text-[14px] text-foreground mt-1">{field.value}</div>
+          <div className={cn("text-[14px] text-foreground mt-1", field.skipped && "line-through text-muted-foreground")}>{field.value}</div>
           <button
             onClick={onToggleSource}
             className="mt-2 text-[11px] text-primary hover:underline flex items-center gap-1"
@@ -634,17 +640,31 @@ function FieldCard({ field, position, total, expanded, onToggleSource, onConfirm
             </div>
           )}
         </div>
-        <button
-          onClick={onConfirm}
-          className={cn(
-            "h-7 px-3 text-[11px] font-medium rounded shrink-0 border",
-            field.confirmed
-              ? "bg-success text-success-foreground border-success"
-              : "border-primary text-primary hover:bg-primary/5"
-          )}
-        >
-          {field.confirmed ? <span className="flex items-center gap-1"><Check className="w-3 h-3" /> Confirmed</span> : "Confirm"}
-        </button>
+        <div className="flex flex-col gap-1.5 shrink-0">
+          <button
+            onClick={onConfirm}
+            className={cn(
+              "h-7 px-3 text-[11px] font-medium rounded border",
+              field.confirmed
+                ? "bg-success text-success-foreground border-success"
+                : "border-primary text-primary hover:bg-primary/5"
+            )}
+          >
+            {field.confirmed ? <span className="flex items-center gap-1"><Check className="w-3 h-3" /> Confirmed</span> : "Confirm"}
+          </button>
+          <button
+            onClick={onSkip}
+            title={field.skipped ? "Restore this field" : "Skip — don't sync this field to Salesforce"}
+            className={cn(
+              "h-7 px-3 text-[11px] font-medium rounded border",
+              field.skipped
+                ? "bg-muted-foreground/10 text-foreground border-muted-foreground/40"
+                : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+            )}
+          >
+            {field.skipped ? <span className="flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Restore</span> : <span className="flex items-center gap-1"><X className="w-3 h-3" /> Skip</span>}
+          </button>
+        </div>
       </div>
     </div>
   );
