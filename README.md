@@ -1,168 +1,123 @@
-# Pulse — AI Call Review for Salesforce
+# Pulse — call review & sync prototype
 
-Pulse is a concept prototype for a Salesforce-native review layer that turns
-post-call CRM logging from a 4-minute manual chore into a ~20-second
-confirmation step. Sales reps get an AI-drafted snapshot of their Zoom call
-and confirm (or skip) seven structured fields before anything syncs to
-Salesforce.
+Pulse listens to a sales call, drafts seven CRM fields, and lets the rep
+**confirm or skip** each one before anything writes to Salesforce. No
+silent sync.
 
-This repo is the front-end prototype: four screens, designed in the
-Salesforce Lightning visual language, wired with realistic constraint logic
-(loading, empty, and error states) so the flow can be demoed end-to-end.
+This repo is a UI prototype: routing, state, and persistence are real;
+Zoom ingestion, the LLM, and the Salesforce write are mocked.
 
----
-
-## Hypothesis
-
-> Sales reps will trust and adopt CRM logging if the system drafts the work
-> for them and asks them to **review and confirm** rather than **type and
-> remember**.
-
-Two beliefs underneath that:
-
-1. **The bottleneck isn't capture, it's transcription.** Zoom already
-   records the call and produces a transcript. Reps hate retyping that
-   into Salesforce fields.
-2. **Trust requires control.** AI drafts must never silently write to the
-   CRM. Every field must be human-confirmed (or explicitly skipped) before
-   sync. The rep is the system of record; the AI is a draft author.
-
-The product is designed to make confirmation cheap and skipping safe — so
-the rep stays in charge without paying the manual-entry tax.
+For the product hypothesis, screen-by-screen breakdown, metrics, and
+mocked-vs-real boundary, see [`PRD.md`](./PRD.md).
 
 ---
 
-## Scenario
+## User flow
 
-The walkthrough centers on a single deal:
+```
+Active Call ──► Review & Confirm ──► Sync Modal ──► Synced
+ (/calls/active)  (/)                  (overlay)     (/calls/complete/:id)
+                    │                                       ▲
+                    └─ Save as Draft ───────────────────────┘
+                    (resumed from queue)
 
-- **Rep:** Jordan Reyes (AE)
-- **Contact:** Maya Chen, Director of RevOps at Northwind Robotics
-- **Call:** 24-minute Zoom discovery call, ended 12 minutes ago
-- **Stakes:** $72K ACV, Q2 implementation, two open objections (SSO/audit
-  logs, Pipedrive migration), CFO Marcus Lee owns budget
-
-Pulse has already drafted a one-paragraph summary and seven CRM fields
-from the transcript. Jordan lands on the review screen, scans the AI's
-work, confirms or skips each field, and syncs the record.
-
----
-
-## Key Screens
-
-| Route | Screen | Purpose |
-|---|---|---|
-| `/calls/active` | **Active Call** | In-call companion — live brief, talk-track suggestions, objection prompts. |
-| `/` | **Review & Confirm** (the heart of the product) | AI-drafted summary + 7 CRM fields. Rep confirms, skips, or edits each one. |
-| `/calls/complete/:id` | **Post-Sync** | Confirmation that the record synced, plus the rep's review queue and pipeline impact. |
-| `/calls/history` | **Previous Calls** | Searchable, filterable history of synced and drafted calls. |
-
-Each screen ships with three constraint states surfaced via a dev-only
-"Simulate state" pill: `loading`, `empty`, `error`. No dead-end errors —
-every error state offers a recovery action.
-
----
-
-## User Flow
-
-```text
-Zoom call ends
-      │
-      ▼
-  AI Drafted        ← summary + 7 fields generated from transcript
-      │
-      ▼
-Ready for Review    ← rep lands on /
-      │
-      ▼
-For each of 7 fields:  Confirm  ──or──  Skip ("AI got it wrong; don't sync")
-      │
-      ├── At any point: Save as Draft → returns to queue, progress preserved
-      │
-      ▼
-All fields resolved (confirmed or skipped)
-      │
-      ▼
-Confirm & Sync to Salesforce  ← modal: last-mile inline edits allowed
-      │
-      ▼
-Synced → /calls/complete/:id
+                                                  Previous Calls
+                                                  (/calls/history)
+                                                       │
+                                                       ▼ (read-only history)
+                                                  /calls/complete/:id
 ```
 
-The rep has exactly three actions on the review screen: **Confirm All
-Fields**, **Save as Draft**, **Confirm & Sync to Salesforce**. The
-status Path component above is read-only — it reflects state, it does
-not trigger it.
+1. **Active Call** — Pulse is listening; rep sees a pre-call brief, talking
+   points, and a quick-note pad.
+2. **Review & Confirm** — seven AI-drafted fields. Each must be confirmed
+   or skipped. Sync stays disabled until all seven are resolved.
+3. **Sync Modal** — last-look overlay. Rows are inline-editable; edits
+   travel with the payload. A 3-step animation simulates the write.
+4. **Synced** — what just happened, rendered from the persisted payload
+   (so edits and skips are reflected, not assumed).
+5. **Previous Calls** — searchable history; clicking a row deep-links to
+   the Synced page in read-only mode.
 
 ---
 
-## Main Build Decisions
+## Project structure
 
-### 1. Confirm-or-skip, never silent-sync
-Every AI-drafted field requires an explicit decision. Skipping is a
-first-class action with its own visual treatment (muted, strikethrough,
-"won't sync" pill) and counts toward the gate that unlocks the sync
-button. This protects rep trust: if the AI is wrong, the rep can opt
-out of that field without abandoning the whole record.
+```
+src/
+├── App.tsx                       # routes only
+├── main.tsx
+│
+├── components/
+│   ├── shell/                    # Cross-feature layout chrome
+│   │   ├── Shell.tsx             #   NavRail, TopBar, BreadcrumbTabs
+│   │   └── StateControls.tsx     #   Demo state toggles + Skeleton
+│   └── ui/                       # shadcn/ui primitives
+│
+├── features/                     # Each folder is a self-contained screen
+│   ├── review/                   # /  — Review & Confirm
+│   │   ├── ReviewPage.tsx        #     display: composes the layout
+│   │   ├── useReviewState.ts     #     state + persistence (the only hook)
+│   │   ├── data.ts               #     types, seed fields, storage keys
+│   │   └── components/
+│   │       ├── SyncModal.tsx     #     overlay: edit-then-write
+│   │       └── ImportModal.tsx   #     overlay: bring an external transcript
+│   │
+│   ├── synced/                   # /calls/complete/:id  — Synced
+│   │   ├── SyncedPage.tsx        #     display
+│   │   └── useSyncedPayload.ts   #     reads what review wrote
+│   │
+│   ├── active-call/              # /calls/active
+│   │   └── ActiveCallPage.tsx
+│   ├── history/                  # /calls/history
+│   │   └── PreviousCallsPage.tsx
+│   └── not-found/                # *
+│       └── NotFoundPage.tsx
+│
+├── data/calls.ts                 # Shared mock data (queue, history, fields)
+├── hooks/                        # Generic hooks (use-toast, use-mobile)
+└── lib/utils.ts                  # cn() and friends
+```
 
-### 2. Salesforce Lightning visual language
-Same color palette, card chrome, typography, and Path component patterns
-reps already know. The product feels like a Salesforce surface, not a
-third-party bolt-on. All colors live as HSL tokens in `index.css` and
-`tailwind.config.ts` — no hardcoded color classes in components.
+### Architectural rules
 
-### 3. The Path is read-only status
-Earlier iterations had a "Mark Status as Complete" button on the Path
-component. Removed — it created two competing commit surfaces. The Path
-now reflects state automatically; the header buttons are the action
-surface.
+- **Display is dumb.** Page components receive props and render. No
+  `localStorage`, no timers — those belong in hooks.
+- **State lives in `useXxxState` hooks.** `useReviewState` owns every
+  field, draft, voice-amendment, and sync handler for `/`. Swapping the
+  mock backend means rewriting one hook.
+- **Data is a module, not a hook.** Seeds, types, and `STORAGE_KEYS` live
+  in `features/<name>/data.ts` so they can be imported from anywhere
+  (e.g. `useSyncedPayload` reads what `useReviewState` wrote without a
+  shared parent).
+- **Group by feature, not by type.** A new screen = a new folder under
+  `features/` with its own page, hook, data, and any local components.
+  Promote to `components/shell/` only if two features share it.
 
-### 4. The sync modal is a correction surface, not a preview
-Reps who spot an error at the last second can fix it inline in the
-"Sync to Salesforce?" modal without losing their place. Inline edits
-do not auto-save — the **Confirm & Sync** button remains the only
-commit action.
+### Persistence
 
-### 5. Drafts persist via `localStorage`
-**Save as Draft** writes to `pulse:drafts` and returns the rep to their
-queue. The Complete screen surfaces drafts at the top of the team queue
-with a "Resume" affordance, so partial reviews are never lost.
+Two `localStorage` keys, both defined in `features/review/data.ts`:
 
-### 6. Constraint logic on every screen
-Each screen has loading, empty, and error states tethered to specific
-rules: minimum 400ms loading durations to avoid flicker, persistent
-nav rail in every error state, and at least one recovery action
-(Retry, Refresh, Clear Filters, Open in Salesforce) on every error.
-A `StateControls` dev pill lets you trigger each path during demo.
+| Key                          | Written by         | Read by              |
+| ---------------------------- | ------------------ | -------------------- |
+| `pulse:drafts`               | `useReviewState`   | `useSyncedPayload`   |
+| `pulse:synced:maya-chen`     | `useReviewState`   | `useSyncedPayload`   |
 
-### 7. Voice amendments as a diff, not an overwrite
-The "Click to record voice note" affordance produces a proposed diff
-across affected fields. The rep applies or discards — the AI never
-silently rewrites confirmed values.
+This is the contract that lets the Synced screen reflect *what actually
+happened* on Review (edits, skips) instead of a canned snapshot.
 
 ---
 
-## Tech Stack
+## Running locally
 
-- **Framework:** React 18 + Vite 5 + TypeScript 5
-- **Styling:** Tailwind CSS v3 with HSL design tokens
-- **UI primitives:** shadcn/ui (Radix under the hood)
-- **Routing:** react-router-dom
-- **State:** React local state + `localStorage` for drafts (no backend yet)
-- **Notifications:** sonner
-
-No backend is wired up — this is a front-end prototype. Lovable Cloud
-can be enabled later for real persistence, auth, and the Salesforce
-integration layer.
-
----
-
-## Running Locally
-
-```bash
+```sh
 npm install
 npm run dev
 ```
 
-Open the preview, then use the **Simulate state** pill at the top-right
-of each screen to walk through loading / empty / error paths.
+Routes worth visiting:
+
+- `/` — Review & Confirm (the main screen)
+- `/calls/active` — Active call mock
+- `/calls/history` — Previous calls table
+- `/calls/complete/maya-chen` — Synced screen (after a sync, or empty fallback)
