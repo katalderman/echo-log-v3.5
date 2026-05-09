@@ -181,8 +181,39 @@ const Index = () => {
     toast.success("Amendment applied to 2 fields");
   };
 
-  const doSync = () => {
-    // SyncModal handles its own progress; navigate to complete on finish
+  const doSync = (syncedRows: { key: string; label: string; value: string; original: string; edited: boolean }[]) => {
+    // Persist what was actually synced so the Complete screen reflects reality
+    try {
+      const syncedFields = syncedRows.map((r) => {
+        const src = fields.find((f) => f.key === r.key)?.source;
+        return {
+          key: r.key,
+          label: r.label,
+          value: r.value,
+          edited: r.edited,
+          original: r.original,
+          source: src ? `${src.speaker} at ${src.ts}` : "",
+        };
+      });
+      const skippedFields = fields
+        .filter((f) => f.skipped)
+        .map((f) => ({ key: f.key, label: f.label, value: f.value }));
+      localStorage.setItem(
+        "pulse:synced:maya-chen",
+        JSON.stringify({
+          summary,
+          syncedFields,
+          skippedFields,
+          syncedAt: new Date().toISOString(),
+        })
+      );
+      // Clear any saved draft now that the call has been synced
+      const drafts = JSON.parse(localStorage.getItem("pulse:drafts") || "[]");
+      localStorage.setItem(
+        "pulse:drafts",
+        JSON.stringify(drafts.filter((d: any) => d.id !== "maya-chen"))
+      );
+    } catch {}
     setPathStep(4);
     setSynced(true);
     setSyncedAgo(0);
