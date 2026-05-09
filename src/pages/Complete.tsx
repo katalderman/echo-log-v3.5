@@ -35,6 +35,16 @@ export default function Complete() {
   const queueRest = REVIEW_QUEUE.filter((c) => c.id !== "maya-chen").slice(0, 3);
   const nextCall = queueRest[0];
 
+  const [drafts, setDrafts] = useState<Array<{ id: string; contact: string; company: string; duration: string; date: string; fieldsConfirmed: number; fieldsTotal: number }>>([]);
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("pulse:drafts") || "[]");
+      setDrafts(stored);
+    } catch {
+      setDrafts([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (isHistory) return;
     const t = setInterval(() => setSecAgo((s) => s + 1), 1000);
