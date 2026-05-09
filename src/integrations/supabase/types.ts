@@ -14,7 +14,137 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      call_fields: {
+        Row: {
+          call_id: string
+          confidence: Database["public"]["Enums"]["field_confidence"]
+          confirmed: boolean
+          created_at: string
+          edited: boolean
+          field_key: string
+          id: string
+          label: string
+          original_value: string
+          position: number
+          skipped: boolean
+          source_quote: string | null
+          source_speaker: string | null
+          source_ts: string | null
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          call_id: string
+          confidence?: Database["public"]["Enums"]["field_confidence"]
+          confirmed?: boolean
+          created_at?: string
+          edited?: boolean
+          field_key: string
+          id?: string
+          label: string
+          original_value: string
+          position?: number
+          skipped?: boolean
+          source_quote?: string | null
+          source_speaker?: string | null
+          source_ts?: string | null
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          call_id?: string
+          confidence?: Database["public"]["Enums"]["field_confidence"]
+          confirmed?: boolean
+          created_at?: string
+          edited?: boolean
+          field_key?: string
+          id?: string
+          label?: string
+          original_value?: string
+          position?: number
+          skipped?: boolean
+          source_quote?: string | null
+          source_speaker?: string | null
+          source_ts?: string | null
+          updated_at?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_fields_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calls: {
+        Row: {
+          amount_cents: number | null
+          call_date: string
+          company: string
+          contact_name: string
+          created_at: string
+          duration_seconds: number
+          email: string | null
+          fields_confirmed: number
+          fields_skipped: number
+          fields_total: number
+          id: string
+          outcome: Database["public"]["Enums"]["call_outcome"] | null
+          owner_id: string | null
+          phone: string | null
+          status: Database["public"]["Enums"]["call_status"]
+          summary: string | null
+          synced_at: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_cents?: number | null
+          call_date?: string
+          company: string
+          contact_name: string
+          created_at?: string
+          duration_seconds?: number
+          email?: string | null
+          fields_confirmed?: number
+          fields_skipped?: number
+          fields_total?: number
+          id?: string
+          outcome?: Database["public"]["Enums"]["call_outcome"] | null
+          owner_id?: string | null
+          phone?: string | null
+          status?: Database["public"]["Enums"]["call_status"]
+          summary?: string | null
+          synced_at?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number | null
+          call_date?: string
+          company?: string
+          contact_name?: string
+          created_at?: string
+          duration_seconds?: number
+          email?: string | null
+          fields_confirmed?: number
+          fields_skipped?: number
+          fields_total?: number
+          id?: string
+          outcome?: Database["public"]["Enums"]["call_outcome"] | null
+          owner_id?: string | null
+          phone?: string | null
+          status?: Database["public"]["Enums"]["call_status"]
+          summary?: string | null
+          synced_at?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +153,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      call_outcome:
+        | "Qualified"
+        | "Booked"
+        | "No Answer"
+        | "Voicemail"
+        | "Discovery"
+        | "Lost"
+      call_status: "drafted" | "in_review" | "draft_saved" | "synced" | "failed"
+      field_confidence: "high" | "med" | "low"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +288,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      call_outcome: [
+        "Qualified",
+        "Booked",
+        "No Answer",
+        "Voicemail",
+        "Discovery",
+        "Lost",
+      ],
+      call_status: ["drafted", "in_review", "draft_saved", "synced", "failed"],
+      field_confidence: ["high", "med", "low"],
+    },
   },
 } as const
