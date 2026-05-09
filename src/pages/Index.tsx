@@ -333,7 +333,7 @@ function StatTile({ value, label, sub, good }: { value: string; label: string; s
 // Record header
 // ============================================================================
 
-function RecordHeader({ synced, syncedAgo, onSync, allConfirmed, confirmedCount }: { synced: boolean; syncedAgo: number; onSync: () => void; allConfirmed: boolean; confirmedCount: number }) {
+function RecordHeader({ synced, syncedAgo, onSync, allConfirmed, confirmedCount, onSaveDraft }: { synced: boolean; syncedAgo: number; onSync: () => void; allConfirmed: boolean; confirmedCount: number; onSaveDraft: () => void }) {
   const syncDisabled = !synced && !allConfirmed;
   const tooltip = syncDisabled ? `Confirm all 7 fields below before syncing to Salesforce. (${confirmedCount} of 7 confirmed)` : "";
   return (
@@ -357,13 +357,18 @@ function RecordHeader({ synced, syncedAgo, onSync, allConfirmed, confirmedCount 
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <button className="h-8 px-3 text-[12px] border border-border rounded hover:bg-secondary">Skip for Now</button>
-        <button className="h-8 px-3 text-[12px] border border-border rounded hover:bg-secondary">Save Draft</button>
+        <button
+          onClick={onSaveDraft}
+          disabled={synced}
+          className="h-8 px-3 text-[12px] font-medium border border-primary text-primary rounded hover:bg-primary/5 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Save as Draft
+        </button>
         <span title={tooltip} className={cn(syncDisabled && "cursor-not-allowed")}>
           <button
             onClick={onSync}
             disabled={synced || syncDisabled}
-            className="h-8 px-4 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed disabled:pointer-events-none"
+            className="h-9 px-4 text-[12px] font-semibold bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed disabled:pointer-events-none"
           >
             {synced ? "Synced" : "Confirm & Sync to Salesforce"}
           </button>
