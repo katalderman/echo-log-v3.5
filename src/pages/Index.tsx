@@ -869,7 +869,17 @@ function TodoFooter() {
 // Modals
 // ============================================================================
 
-function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
+function SyncModal({
+  onCancel,
+  onConfirm,
+  syncFields,
+  skippedCount,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void;
+  syncFields: { key: string; label: string; value: string }[];
+  skippedCount: number;
+}) {
   const [showLineage, setShowLineage] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -877,25 +887,17 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
   const [simulateError, setSimulateError] = useState(false);
   const [errored, setErrored] = useState(false);
 
+  const fieldCount = syncFields.length;
+
   const SYNC_STEPS = [
     { label: "Validating field permissions...", done: "Field permissions validated", ms: 400 },
-    { label: "Writing 7 fields to Maya Chen's record...", done: "7 fields written to Maya Chen's record", ms: 800 },
+    { label: `Writing ${fieldCount} field${fieldCount === 1 ? "" : "s"} to Maya Chen's record...`, done: `${fieldCount} field${fieldCount === 1 ? "" : "s"} written to Maya Chen's record`, ms: 800 },
     { label: "Logging activity to pipeline...", done: "Activity logged to pipeline", ms: 600 },
-  ];
-
-  const ORIGINAL = [
-    { key: "outcome", label: "Call outcome", value: "Qualified — moving to security review" },
-    { key: "next", label: "Next step", value: "Send SOC 2 + sandbox access by Fri Apr 30" },
-    { key: "dm", label: "Decision maker", value: "Marcus Lee (CFO) — budget; Maya — technical" },
-    { key: "budget", label: "Budget signal", value: "$60–80K ACV envelope confirmed" },
-    { key: "timeline", label: "Timeline", value: "Q2 2026 implementation; 60-day procurement" },
-    { key: "objections", label: "Objections", value: "SSO/audit logs + Pipedrive migration" },
-    { key: "sentiment", label: "Sentiment", value: "Positive — exec air-cover from CEO" },
   ];
 
   type Row = { key: string; label: string; value: string; original: string; edited: boolean };
   const [rows, setRows] = useState<Row[]>(
-    ORIGINAL.map((f) => ({ ...f, original: f.value, edited: false }))
+    syncFields.map((f) => ({ ...f, original: f.value, edited: false }))
   );
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
