@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   Phone, CheckCircle2, Check, ExternalLink, Video, Quote, ChevronDown, ChevronRight,
-  ArrowLeft, ArrowRight, Sparkles,
+  ArrowLeft, ArrowRight, Sparkles, AlertTriangle,
 } from "lucide-react";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/pulse/Shell";
+import { StateControls, Skeleton, ScreenState } from "@/components/pulse/StateControls";
 import { cn } from "@/lib/utils";
 import { CONFIRMED_FIELDS, REVIEW_QUEUE, PREVIOUS_CALLS } from "@/data/calls";
 
