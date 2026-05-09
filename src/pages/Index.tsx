@@ -191,34 +191,7 @@ const Index = () => {
         <StatBanner onImport={() => setShowImport(true)} />
 
         <main className="flex-1 px-6 py-4 space-y-4">
-          <RecordHeader
-            synced={synced}
-            syncedAgo={syncedAgo}
-            onSync={() => setShowSync(true)}
-            allConfirmed={confirmedCount === 7}
-            confirmedCount={confirmedCount}
-            onSaveDraft={() => {
-              try {
-                const draft = {
-                  id: "maya-chen",
-                  contact: "Maya Chen",
-                  company: "Northwind Robotics",
-                  duration: "24m 18s",
-                  date: "Apr 28, 2026",
-                  fieldsConfirmed: confirmedCount,
-                  fieldsTotal: 7,
-                  savedAt: new Date().toISOString(),
-                };
-                const existing = JSON.parse(localStorage.getItem("pulse:drafts") || "[]");
-                const next = [draft, ...existing.filter((d: any) => d.id !== draft.id)];
-                localStorage.setItem("pulse:drafts", JSON.stringify(next));
-              } catch {}
-              toast.success("Draft saved", {
-                description: "Pick up where you left off from your queue.",
-              });
-              navigate("/calls/complete/maya-chen");
-            }}
-          />
+          <RecordHeader synced={synced} syncedAgo={syncedAgo} />
           <SourceBanner />
           <PathBar step={pathStep} />
 
@@ -231,6 +204,28 @@ const Index = () => {
                 synced={synced}
                 confirmedCount={confirmedCount}
                 onConfirmAll={confirmAll}
+                onSync={() => setShowSync(true)}
+                onSaveDraft={() => {
+                  try {
+                    const draft = {
+                      id: "maya-chen",
+                      contact: "Maya Chen",
+                      company: "Northwind Robotics",
+                      duration: "24m 18s",
+                      date: "Apr 28, 2026",
+                      fieldsConfirmed: confirmedCount,
+                      fieldsTotal: 7,
+                      savedAt: new Date().toISOString(),
+                    };
+                    const existing = JSON.parse(localStorage.getItem("pulse:drafts") || "[]");
+                    const next = [draft, ...existing.filter((d: any) => d.id !== draft.id)];
+                    localStorage.setItem("pulse:drafts", JSON.stringify(next));
+                  } catch {}
+                  toast.success("Draft saved", {
+                    description: "Pick up where you left off from your queue.",
+                  });
+                  navigate("/calls/complete/maya-chen");
+                }}
               />
               <SummaryBlock
                 summary={summary}
@@ -333,9 +328,7 @@ function StatTile({ value, label, sub, good }: { value: string; label: string; s
 // Record header
 // ============================================================================
 
-function RecordHeader({ synced, syncedAgo, onSync, allConfirmed, confirmedCount, onSaveDraft }: { synced: boolean; syncedAgo: number; onSync: () => void; allConfirmed: boolean; confirmedCount: number; onSaveDraft: () => void }) {
-  const syncDisabled = !synced && !allConfirmed;
-  const tooltip = syncDisabled ? `Confirm all 7 fields below before syncing to Salesforce. (${confirmedCount} of 7 confirmed)` : "";
+function RecordHeader({ synced, syncedAgo }: { synced: boolean; syncedAgo: number }) {
   return (
     <div className="bg-card border border-border rounded p-4 flex items-center gap-4">
       <div className="w-12 h-12 rounded-full bg-teal grid place-items-center shrink-0">
@@ -355,24 +348,6 @@ function RecordHeader({ synced, syncedAgo, onSync, allConfirmed, confirmedCount,
             <>Drafted from your <span className="font-medium text-foreground">24-minute Zoom call</span> with Maya Chen, ended 12 minutes ago. Nothing has synced yet.</>
           )}
         </div>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <button
-          onClick={onSaveDraft}
-          disabled={synced}
-          className="h-8 px-3 text-[12px] font-medium border border-primary text-primary rounded hover:bg-primary/5 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Save as Draft
-        </button>
-        <span title={tooltip} className={cn(syncDisabled && "cursor-not-allowed")}>
-          <button
-            onClick={onSync}
-            disabled={synced || syncDisabled}
-            className="h-9 px-4 text-[12px] font-semibold bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed disabled:pointer-events-none"
-          >
-            {synced ? "Synced" : "Confirm & Sync to Salesforce"}
-          </button>
-        </span>
       </div>
     </div>
   );
@@ -487,13 +462,15 @@ function Row({ label, value, edit }: { label: string; value: React.ReactNode; ed
 // Center — Summary + fields + amendment
 // ============================================================================
 
-function CenterHeader({ summaryReviewed, synced, confirmedCount, onConfirmAll }: {
-  summaryReviewed: boolean; synced: boolean; confirmedCount: number; onConfirmAll: () => void;
+function CenterHeader({ summaryReviewed, synced, confirmedCount, onConfirmAll, onSync, onSaveDraft }: {
+  summaryReviewed: boolean; synced: boolean; confirmedCount: number; onConfirmAll: () => void; onSync: () => void; onSaveDraft: () => void;
 }) {
   const total = 7;
   const allConfirmed = confirmedCount === total;
   const remaining = total - confirmedCount;
   const pct = (confirmedCount / total) * 100;
+  const syncDisabled = !synced && !allConfirmed;
+  const tooltip = syncDisabled ? `Confirm all 7 fields below before syncing to Salesforce. (${confirmedCount} of 7 confirmed)` : "";
   return (
     <div className="space-y-2">
       <div className="flex items-start justify-between gap-3">
@@ -505,18 +482,36 @@ function CenterHeader({ summaryReviewed, synced, confirmedCount, onConfirmAll }:
             Pulse drafted these from your Zoom call. Confirm each field is accurate, then sync to Salesforce.
           </div>
         </div>
-        {allConfirmed ? (
-          <span className="h-8 px-3 text-[12px] font-medium bg-success/10 text-success border border-success/30 rounded flex items-center gap-1.5 shrink-0">
-            <Check className="w-3.5 h-3.5" /> All Fields Confirmed
-          </span>
-        ) : (
+        <div className="flex items-center gap-2 shrink-0">
+          {allConfirmed ? (
+            <span className="h-8 px-3 text-[12px] font-medium bg-success/10 text-success border border-success/30 rounded flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5" /> All Fields Confirmed
+            </span>
+          ) : (
+            <button
+              onClick={onConfirmAll}
+              className="h-8 px-3 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 shrink-0"
+            >
+              {confirmedCount === 0 ? "Confirm All Fields" : `Confirm Remaining (${remaining})`}
+            </button>
+          )}
           <button
-            onClick={onConfirmAll}
-            className="h-8 px-3 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 shrink-0"
+            onClick={onSaveDraft}
+            disabled={synced}
+            className="h-8 px-3 text-[12px] font-medium border border-primary text-primary rounded hover:bg-primary/5 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
           >
-            {confirmedCount === 0 ? "Confirm All Fields" : `Confirm Remaining (${remaining})`}
+            Save as Draft
           </button>
-        )}
+          <span title={tooltip} className={cn(syncDisabled && "cursor-not-allowed")}>
+            <button
+              onClick={onSync}
+              disabled={synced || syncDisabled}
+              className="h-9 px-4 text-[12px] font-semibold bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
+            >
+              {synced ? "Synced" : "Confirm & Sync to Salesforce"}
+            </button>
+          </span>
+        </div>
       </div>
       <div className="space-y-1">
         <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
