@@ -1,17 +1,28 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Phone, CheckCircle2, Check, ExternalLink, Video, Quote, ChevronDown, ChevronRight,
   ArrowLeft, ArrowRight, Sparkles, AlertTriangle, RefreshCw,
 } from "lucide-react";
-import { NavRail, TopBar, BreadcrumbTabs } from "@/components/pulse/Shell";
-import { StateControls, Skeleton, ScreenState } from "@/components/pulse/StateControls";
+import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
+import { StateControls, Skeleton, ScreenState } from "@/components/shell/StateControls";
 import { cn } from "@/lib/utils";
 import { CONFIRMED_FIELDS, REVIEW_QUEUE, PREVIOUS_CALLS } from "@/data/calls";
+import { useSyncedPayload } from "./useSyncedPayload";
 
 const STEPS = ["Call Ended", "AI Drafted", "Ready for Review", "Fields Confirmed", "Synced to Salesforce"];
 
-export default function Complete() {
+/**
+ * SyncedPage — what just synced.
+ *
+ * Two modes:
+ *   1. fresh-sync — driven by the payload the Review screen persisted.
+ *      Falls back to canned data only if no payload is found.
+ *   2. history view — if `:id` matches a previous call, render read-only.
+ *
+ * State controls (top-right) let demoers toggle observability/error states.
+ */
+export default function SyncedPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [secAgo, setSecAgo] = useState(2);
@@ -35,28 +46,9 @@ export default function Complete() {
   const queueRest = REVIEW_QUEUE.filter((c) => c.id !== "maya-chen").slice(0, 3);
   const nextCall = queueRest[0];
 
-  const [drafts, setDrafts] = useState<Array<{ id: string; contact: string; company: string; duration: string; date: string; fieldsConfirmed: number; fieldsTotal: number }>>([]);
-  const [syncedPayload, setSyncedPayload] = useState<{
-    summary?: string;
-    syncedFields?: { key: string; label: string; value: string; edited?: boolean; original?: string; source: string }[];
-    skippedFields?: { key: string; label: string; value: string }[];
-  } | null>(null);
-  useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem("pulse:drafts") || "[]");
-      setDrafts(stored);
-    } catch {
-      setDrafts([]);
-    }
-    if (!isHistory) {
-      try {
-        const raw = localStorage.getItem("pulse:synced:maya-chen");
-        if (raw) setSyncedPayload(JSON.parse(raw));
-      } catch {}
-    }
-  }, [isHistory]);
+  const { drafts, syncedPayload } = useSyncedPayload({ isHistory });
 
-  // Use what was actually synced when available; otherwise fall back to the canned data
+  // Use what was actually synced when available; otherwise fall back to the canned data.
   const displayedFields = syncedPayload?.syncedFields?.length
     ? syncedPayload.syncedFields.map((f) => ({ label: f.label, value: f.value, source: f.source, edited: f.edited }))
     : CONFIRMED_FIELDS.map((f) => ({ ...f, edited: false }));
@@ -70,7 +62,9 @@ export default function Complete() {
     return () => clearInterval(t);
   }, [isHistory]);
 
-  const syncedLabel = isHistory ? `Synced ${previous?.syncedAt}` : (secAgo < 60 ? `${secAgo} seconds ago` : `${Math.floor(secAgo / 60)} min ago`);
+  const syncedLabel = isHistory
+    ? `Synced ${previous?.syncedAt}`
+    : secAgo < 60 ? `${secAgo} seconds ago` : `${Math.floor(secAgo / 60)} min ago`;
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
@@ -112,6 +106,7 @@ export default function Complete() {
               />
             </div>
           )}
+
           {/* Record header — success state */}
           <div className="bg-card border border-border rounded p-4 flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-success grid place-items-center shrink-0">
@@ -159,7 +154,7 @@ export default function Complete() {
                   className={cn(
                     "h-9 px-4 -ml-2 first:ml-0 flex items-center justify-center text-[11px] font-medium gap-1.5 flex-1",
                     i === 0 ? "path-chevron-first" : i === STEPS.length - 1 ? "path-chevron-last" : "path-chevron",
-                    i < STEPS.length - 1 ? "bg-success/15 text-success" : "bg-success text-white"
+                    i < STEPS.length - 1 ? "bg-success/15 text-success" : "bg-success text-white",
                   )}
                 >
                   <Check className="w-3 h-3" />
@@ -203,12 +198,8 @@ export default function Complete() {
           )}
 
           <div className="grid grid-cols-12 gap-4">
-            {/* Left: About */}
-            <div className="col-span-3">
-              <AboutCard />
-            </div>
+            <div className="col-span-3"><AboutCard /></div>
 
-            {/* Center */}
             <div className="col-span-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -225,7 +216,6 @@ export default function Complete() {
                 </div>
               </div>
 
-              {/* Summary */}
               <div className="bg-card border border-l-4 border-l-success border-border rounded p-3">
                 <div className="flex items-start gap-2">
                   <Quote className="w-4 h-4 text-success shrink-0 mt-0.5" />
@@ -238,7 +228,6 @@ export default function Complete() {
                 </div>
               </div>
 
-              {/* Read-only fields */}
               <div className="space-y-2">
                 {displayedFields.map((f) => (
                   <div key={f.label} className="bg-card border border-l-4 border-l-success border-border rounded p-3 opacity-95">

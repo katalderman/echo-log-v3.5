@@ -4,13 +4,13 @@ import {
   Phone, Video, MicOff, ChevronDown, ChevronRight, Check, FileText, Sparkles, Zap,
   Lightbulb, AlertTriangle, RefreshCw,
 } from "lucide-react";
-import { NavRail, TopBar, BreadcrumbTabs } from "@/components/pulse/Shell";
-import { StateControls, Skeleton, ScreenState } from "@/components/pulse/StateControls";
+import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
+import { StateControls, Skeleton, ScreenState } from "@/components/shell/StateControls";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Call In Progress", "Call Ended", "AI Drafting", "Ready for Review", "Confirmed", "Synced"];
 
-export default function ActiveCall() {
+export default function ActiveCallPage() {
   const navigate = useNavigate();
   const [elapsed, setElapsed] = useState(8 * 60);
   const [note, setNote] = useState("");

@@ -1,7 +1,8 @@
-import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
-const NotFound = () => {
+/** NotFoundPage — catch-all route. Logs the bad path for diagnostics. */
+export default function NotFoundPage() {
   const location = useLocation();
 
   useEffect(() => {
@@ -19,6 +20,4 @@ const NotFound = () => {
       </div>
     </div>
   );
-};
-
-export default NotFound;
+}
