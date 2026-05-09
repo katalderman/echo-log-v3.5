@@ -23,6 +23,21 @@ export default function PreviousCalls() {
   const [search, setSearch] = useState("");
   const [time, setTime] = useState("All");
   const [outcome, setOutcome] = useState<typeof OUTCOMES[number]>("All Outcomes");
+  const [screenState, setScreenState] = useState<ScreenState>("loading");
+  const [showErrorDetails, setShowErrorDetails] = useState(false);
+
+  // Loading state ≥ 600ms even if instant.
+  useEffect(() => {
+    if (screenState !== "loading") return;
+    const t = window.setTimeout(() => setScreenState("normal"), 700);
+    return () => clearTimeout(t);
+  }, [screenState]);
+
+  // Trigger loading shimmer briefly on filter change.
+  useEffect(() => {
+    if (screenState === "error" || screenState === "empty") return;
+    setScreenState("loading");
+  }, [search, time, outcome]);
 
   const rows = useMemo(() => {
     return PREVIOUS_CALLS.filter((c) => {
@@ -44,6 +59,7 @@ export default function PreviousCalls() {
     setTime("All");
     setOutcome("All Outcomes");
   };
+  const isBrandNew = screenState === "empty";
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
