@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Home, Phone, Users, Building2, BarChart3, Settings, Search, HelpCircle, Bell,
-  ChevronRight, ChevronDown, X, Check, Pencil, Video, FileText, Upload, Link2,
+  Phone, Search, ChevronRight, ChevronDown, X, Check, Pencil, Video, FileText, Upload, Link2,
   Mic, Square, Bold, Italic, Strikethrough, List, ListOrdered, AtSign,
-  CheckCircle2, AlertCircle, Circle, RefreshCw, Filter, Mail, ClipboardList,
-  StickyNote, Quote, Eye, ArrowRight, Plus, Plug, FileUp, Calendar,
+  CheckCircle2, RefreshCw, Filter, Mail, ClipboardList,
+  StickyNote, Quote, Eye, Plus, Plug, FileUp, Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NavRail, TopBar, BreadcrumbTabs } from "@/components/pulse/Shell";
 
 // ============================================================================
 // Types & mock data
@@ -90,6 +91,7 @@ const TIMELINE_GROUPS = [
 // ============================================================================
 
 const Index = () => {
+  const navigate = useNavigate();
   const [fields, setFields] = useState<Field[]>(SEED_FIELDS);
   const [summary, setSummary] = useState(SEED_SUMMARY);
   const [editingSummary, setEditingSummary] = useState(false);
@@ -170,11 +172,12 @@ const Index = () => {
   };
 
   const doSync = () => {
-    setShowSync(false);
+    // SyncModal handles its own progress; navigate to complete on finish
     setPathStep(4);
     setSynced(true);
     setSyncedAgo(0);
-    toast.success("Synced to Salesforce in 2.3 seconds", { description: "Maya Chen contact record updated." });
+    setShowSync(false);
+    navigate("/calls/complete/maya-chen");
   };
 
   return (
@@ -182,7 +185,11 @@ const Index = () => {
       <NavRail />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar />
-        <BreadcrumbTabs />
+        <BreadcrumbTabs
+          crumbs={[{ label: "Calls", to: "/" }, { label: "Active Review" }]}
+          tab={{ label: "Maya Chen — Northwind Robotics", closable: true }}
+          tabIcon={Phone}
+        />
         <StatBanner onImport={() => setShowImport(true)} />
 
         <main className="flex-1 px-6 py-4 space-y-4">
@@ -254,80 +261,7 @@ const Index = () => {
 
 export default Index;
 
-// ============================================================================
-// Nav rail + top chrome
-// ============================================================================
-
-function NavRail() {
-  const items = [
-    { icon: Home, label: "Home" },
-    { icon: Phone, label: "Calls", active: true },
-    { icon: Users, label: "Contacts" },
-    { icon: Building2, label: "Accounts" },
-    { icon: BarChart3, label: "Pipeline" },
-  ];
-  return (
-    <aside className="w-[60px] shrink-0 bg-nav text-nav-foreground flex flex-col items-center py-3 gap-1 sticky top-0 h-screen">
-      <div className="w-8 h-8 rounded bg-primary grid place-items-center text-[11px] font-bold mb-2">P</div>
-      {items.map((it) => (
-        <button
-          key={it.label}
-          className={cn(
-            "w-[52px] py-2 rounded flex flex-col items-center gap-0.5 transition-colors",
-            it.active ? "bg-white/10" : "hover:bg-white/5"
-          )}
-        >
-          <it.icon className="w-4 h-4" />
-          <span className="text-[9px] leading-tight">{it.label}</span>
-        </button>
-      ))}
-      <button className="mt-auto w-[52px] py-2 rounded flex flex-col items-center gap-0.5 hover:bg-white/5">
-        <Settings className="w-4 h-4" />
-        <span className="text-[9px]">Settings</span>
-      </button>
-    </aside>
-  );
-}
-
-function TopBar() {
-  return (
-    <header className="h-12 bg-card border-b border-border flex items-center px-4 gap-4 sticky top-0 z-20">
-      <div className="text-[13px] font-semibold text-nav">Pulse</div>
-      <div className="flex-1 max-w-2xl mx-auto relative">
-        <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input
-          placeholder="Search Salesforce"
-          className="w-full h-8 pl-8 pr-3 text-[13px] bg-secondary border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-        />
-      </div>
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <button className="p-1.5 hover:bg-secondary rounded"><HelpCircle className="w-4 h-4" /></button>
-        <button className="p-1.5 hover:bg-secondary rounded"><Settings className="w-4 h-4" /></button>
-        <button className="p-1.5 hover:bg-secondary rounded relative">
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-destructive" />
-        </button>
-        <div className="w-7 h-7 rounded-full bg-teal grid place-items-center text-[11px] font-medium text-white">JR</div>
-      </div>
-    </header>
-  );
-}
-
-function BreadcrumbTabs() {
-  return (
-    <div className="bg-card border-b border-border flex items-center text-[12px]">
-      <div className="flex items-center px-4 py-2 text-muted-foreground gap-1">
-        <Phone className="w-3.5 h-3.5" /> Calls <ChevronRight className="w-3 h-3 mx-0.5" />
-        <span className="text-foreground">Active Review</span>
-      </div>
-      <div className="flex items-center gap-2 px-3 py-1.5 border-l border-r border-border bg-accent/40 border-b-2 border-b-primary -mb-px">
-        <Phone className="w-3.5 h-3.5 text-teal" />
-        <span className="font-medium">Maya Chen — Northwind Robotics</span>
-        <button className="hover:bg-secondary rounded p-0.5"><X className="w-3 h-3" /></button>
-      </div>
-    </div>
-  );
-}
+// Shell components imported from @/components/pulse/Shell
 
 // ============================================================================
 // Stat banner
@@ -845,21 +779,113 @@ function TodoFooter() {
 // ============================================================================
 
 function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
+  const [showLineage, setShowLineage] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (!syncing) return;
+    const t = window.setInterval(() => setProgress((p) => Math.min(100, p + 6)), 80);
+    return () => clearInterval(t);
+  }, [syncing]);
+
+  useEffect(() => {
+    if (progress >= 100) {
+      const t = window.setTimeout(onConfirm, 250);
+      return () => clearTimeout(t);
+    }
+  }, [progress, onConfirm]);
+
+  const fields = [
+    { label: "Call outcome", value: "Qualified — moving to security review" },
+    { label: "Next step", value: "Send SOC 2 + sandbox access by Fri Apr 30" },
+    { label: "Decision maker", value: "Marcus Lee (CFO) — budget; Maya — technical" },
+    { label: "Budget signal", value: "$60–80K ACV envelope confirmed" },
+    { label: "Timeline", value: "Q2 2026 implementation; 60-day procurement" },
+    { label: "Objections", value: "SSO/audit logs + Pipedrive migration" },
+    { label: "Sentiment", value: "Positive — exec air-cover from CEO" },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 grid place-items-center px-4">
-      <div className="bg-card border border-border rounded shadow-xl max-w-md w-full">
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <div className="font-semibold text-[15px]">Sync to Salesforce?</div>
-          <button onClick={onCancel} className="p-1 hover:bg-secondary rounded"><X className="w-4 h-4" /></button>
+    <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center px-4 py-8">
+      <div className="bg-card border border-border rounded shadow-xl max-w-xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="px-5 py-4 border-b border-border flex items-start justify-between">
+          <div>
+            <div className="font-semibold text-[22px] leading-tight">Sync to Salesforce?</div>
+            <div className="text-[13px] text-muted-foreground mt-1">
+              7 fields, 1 summary, and 1 voice note will be added to Maya Chen's contact record.
+            </div>
+          </div>
+          {!syncing && (
+            <button onClick={onCancel} className="p-1 hover:bg-secondary rounded"><X className="w-4 h-4" /></button>
+          )}
         </div>
-        <div className="p-4 text-[13px] text-foreground/90">
-          7 fields and 1 summary will be added to Maya Chen's contact record.
-          <div className="text-[12px] text-muted-foreground mt-1">This action can be undone within 24 hours.</div>
-        </div>
-        <div className="px-4 py-3 border-t border-border flex justify-end gap-2">
-          <button onClick={onCancel} className="h-8 px-3 text-[12px] border border-border rounded hover:bg-secondary">Cancel</button>
-          <button onClick={onConfirm} className="h-8 px-3 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90">Confirm & Sync</button>
-        </div>
+
+        {syncing ? (
+          <div className="p-8">
+            <div className="text-[13px] mb-3 flex items-center gap-2">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" /> Syncing to Salesforce…
+            </div>
+            <div className="w-full h-1.5 bg-secondary rounded overflow-hidden">
+              <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
+            </div>
+            <div className="text-[11px] text-muted-foreground mt-2">
+              Writing fields · attaching summary · logging activity
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="px-5 py-4 grid grid-cols-3 gap-3">
+              {[
+                { v: "7", l: "Fields", s: "confirmed" },
+                { v: "1", l: "Summary", s: "draft" },
+                { v: "1", l: "Activity", s: "call logged" },
+              ].map((s) => (
+                <div key={s.l} className="bg-info border border-info-border rounded px-3 py-2.5">
+                  <div className="text-[20px] font-semibold leading-tight num text-primary">{s.v}</div>
+                  <div className="text-[11px] font-medium">{s.l}</div>
+                  <div className="text-[10px] text-muted-foreground">{s.s}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="px-5 pb-4">
+              <button
+                onClick={() => setShowLineage((v) => !v)}
+                className="w-full px-3 py-2 border border-border rounded text-[12px] font-semibold flex items-center gap-1.5 hover:bg-secondary/50"
+              >
+                {showLineage ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                What changes in Salesforce
+              </button>
+              {showLineage && (
+                <div className="border border-t-0 border-border rounded-b -mt-px divide-y divide-border animate-fade-in">
+                  {fields.map((f) => (
+                    <div key={f.label} className="px-3 py-2 flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{f.label}</div>
+                        <div className="text-[12px]">{f.value}</div>
+                      </div>
+                      <span className="text-[10px] bg-info border border-info-border text-primary px-1.5 py-0.5 rounded shrink-0 flex items-center gap-1 mt-2">
+                        <Video className="w-2.5 h-2.5" /> From your call with Maya
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="text-[11px] text-muted-foreground mt-3">This action can be undone within 24 hours.</div>
+            </div>
+
+            <div className="px-5 py-3 border-t border-border flex justify-end gap-2">
+              <button onClick={onCancel} className="h-9 px-4 text-[12px] border border-border rounded hover:bg-secondary">Cancel</button>
+              <button
+                onClick={() => setSyncing(true)}
+                className="h-9 px-5 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90"
+              >
+                Confirm & Sync
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
