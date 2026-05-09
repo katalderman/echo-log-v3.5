@@ -121,3 +121,24 @@ Routes worth visiting:
 - `/calls/active` — Active call mock
 - `/calls/history` — Previous calls table
 - `/calls/complete/maya-chen` — Synced screen (after a sync, or empty fallback)
+
+---
+
+## Next steps
+
+### Add authentication & lock down the database
+
+Lovable Cloud is wired up and two tables exist (`calls`, `call_fields`),
+but **row-level security is currently open** — anyone with the anon key can
+read or write any row. This is intentional for the prototype; it is **not
+safe for production**.
+
+Before shipping:
+
+1. Add authentication (email/password + Google sign-in is the default).
+2. Replace the open RLS policies on `calls` and `call_fields` with policies
+   scoped to `owner_id = auth.uid()` (and join through `call_id` for
+   `call_fields`).
+3. Set `owner_id` on insert from the authenticated user.
+4. Migrate the existing `localStorage` reads/writes in `useReviewState`
+   and `useSyncedPayload` over to the database.
