@@ -1099,11 +1099,27 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
               </div>
             </div>
 
-            <div className="px-5 py-3 border-t border-border flex justify-end gap-2">
-              <button onClick={onCancel} className="h-9 px-4 text-[12px] border border-border rounded hover:bg-secondary">Cancel</button>
+            <div className="px-5 py-3 border-t border-border flex items-center gap-2">
+              <label className="text-[11px] text-muted-foreground flex items-center gap-1.5 mr-auto select-none cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={simulateError}
+                  onChange={(e) => setSimulateError(e.target.checked)}
+                  className="accent-destructive"
+                />
+                Simulate sync error
+              </label>
+              <button
+                onClick={onCancel}
+                disabled={syncing}
+                className="h-9 px-4 text-[12px] border border-border rounded hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
               <button
                 onClick={() => setSyncing(true)}
-                className="h-9 px-5 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                disabled={syncing}
+                className="h-9 px-5 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
               >
                 Confirm & Sync
               </button>
