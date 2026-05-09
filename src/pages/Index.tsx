@@ -857,18 +857,37 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
     setRows((arr) => arr.map((r) => (r.key === key ? { ...r, value: r.original, edited: false } : r)));
   };
 
+  // Stepped sync animation: each row resolves in sequence; progress bar fills smoothly across all rows.
   useEffect(() => {
-    if (!syncing) return;
-    const t = window.setInterval(() => setProgress((p) => Math.min(100, p + 6)), 80);
-    return () => clearInterval(t);
-  }, [syncing]);
+    if (!syncing || errored) return;
+    const totalMs = SYNC_STEPS.reduce((a, s) => a + s.ms, 0);
+    const cumulative = [SYNC_STEPS[0].ms, SYNC_STEPS[0].ms + SYNC_STEPS[1].ms, totalMs];
+    const start = Date.now();
+    const i = window.setInterval(() => {
+      const elapsed = Date.now() - start;
+      setProgress(Math.min(100, Math.round((elapsed / totalMs) * 100)));
+      // simulated failure on writing fields step
+      if (simulateError && elapsed >= SYNC_STEPS[0].ms + 200) {
+        setErrored(true);
+        window.clearInterval(i);
+        return;
+      }
+      if (elapsed >= cumulative[2]) {
+        setStepState(3);
+        window.clearInterval(i);
+        window.setTimeout(onConfirm, 250);
+      } else if (elapsed >= cumulative[1]) setStepState(2);
+      else if (elapsed >= cumulative[0]) setStepState(1);
+    }, 50);
+    return () => window.clearInterval(i);
+  }, [syncing, errored, simulateError, onConfirm]);
 
-  useEffect(() => {
-    if (progress >= 100) {
-      const t = window.setTimeout(onConfirm, 250);
-      return () => clearTimeout(t);
-    }
-  }, [progress, onConfirm]);
+  const retrySync = () => {
+    setErrored(false);
+    setProgress(0);
+    setStepState(0);
+    setSimulateError(false);
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center px-4 py-8">
