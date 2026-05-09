@@ -904,19 +904,81 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
           )}
         </div>
 
-        {syncing ? (
-          <div className="p-8">
+        {syncing && !errored ? (
+          <div className="p-6">
             <div className="text-[13px] mb-3 flex items-center gap-2">
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" /> Syncing to Salesforce…
             </div>
-            <div className="w-full h-1.5 bg-secondary rounded overflow-hidden">
+            <div className="w-full h-1.5 bg-secondary rounded overflow-hidden mb-4">
               <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
             </div>
-            <div className="text-[11px] text-muted-foreground mt-2">
-              Writing fields · attaching summary · logging activity
+            <div className="space-y-2">
+              {SYNC_STEPS.map((s, i) => {
+                const done = stepState > i;
+                const active = stepState === i;
+                return (
+                  <div
+                    key={s.label}
+                    className={cn(
+                      "flex items-center gap-2 text-[12px] px-3 py-2 border rounded",
+                      done ? "border-success/40 bg-success/5" : "border-border bg-card"
+                    )}
+                  >
+                    {done ? (
+                      <span className="w-4 h-4 rounded-full bg-success grid place-items-center shrink-0">
+                        <Check className="w-2.5 h-2.5 text-white" />
+                      </span>
+                    ) : active ? (
+                      <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                    ) : (
+                      <span className="w-4 h-4 rounded-full border border-border bg-secondary shrink-0" />
+                    )}
+                    <span className={cn(done ? "text-success font-medium" : active ? "font-medium" : "text-muted-foreground")}>
+                      {done ? s.done : s.label}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        ) : (
+        ) : errored ? (
+          <div className="p-5 space-y-4">
+            <div className="bg-destructive/5 border border-l-4 border-l-destructive border-destructive/30 rounded p-4">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <div className="text-[13px] font-semibold text-destructive">Sync failed.</div>
+                  <div className="text-[12px] text-foreground/80 mt-1 leading-relaxed">
+                    Maya Chen's record is currently locked by another user. Your draft is saved — try again in a few minutes.
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              Path stays at <span className="font-medium text-foreground">Fields Confirmed</span>. Nothing was committed to Salesforce.
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <button
+                onClick={() => { setSyncing(false); setErrored(false); onCancel(); }}
+                className="h-9 px-4 text-[12px] border border-border rounded hover:bg-secondary"
+              >
+                Save Draft & Exit
+              </button>
+              <button
+                onClick={retrySync}
+                className="h-9 px-5 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 flex items-center gap-1.5"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Retry Sync
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {!syncing && !errored && (
+          <></>
+        )}
+        {!syncing && !errored ? null : null}
+        {/* original review/edit UI is rendered when not syncing */}
+
           <>
             <div className="px-5 py-4 grid grid-cols-3 gap-3">
               <div className="bg-info border border-info-border rounded px-3 py-2.5">
