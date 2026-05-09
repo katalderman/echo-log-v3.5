@@ -25,6 +25,7 @@ type Field = {
   confidence: Confidence;
   source: { speaker: string; ts: string; quote: string };
   confirmed: boolean;
+  skipped?: boolean;
 };
 
 const SEED_SUMMARY =
@@ -112,10 +113,12 @@ const Index = () => {
   const recTimer = useRef<number | null>(null);
 
   const confirmedCount = fields.filter((f) => f.confirmed).length;
+  const skippedCount = fields.filter((f) => f.skipped).length;
+  const resolvedCount = confirmedCount + skippedCount;
 
   useEffect(() => {
-    if (confirmedCount === 7 && pathStep < 3) setPathStep(3);
-  }, [confirmedCount, pathStep]);
+    if (resolvedCount === 7 && pathStep < 3) setPathStep(3);
+  }, [resolvedCount, pathStep]);
 
   useEffect(() => {
     if (!synced) return;
@@ -124,13 +127,22 @@ const Index = () => {
   }, [synced]);
 
   const toggleConfirm = (k: FieldKey) => {
-    setFields((arr) => arr.map((f) => (f.key === k ? { ...f, confirmed: !f.confirmed } : f)));
+    setFields((arr) => arr.map((f) => (f.key === k ? { ...f, confirmed: !f.confirmed, skipped: false } : f)));
+  };
+  const toggleSkip = (k: FieldKey) => {
+    setFields((arr) => arr.map((f) => {
+      if (f.key !== k) return f;
+      const next = !f.skipped;
+      if (next) toast(`"${f.label}" skipped`, { description: "This field will not be synced to Salesforce." });
+      return { ...f, skipped: next, confirmed: next ? false : f.confirmed };
+    }));
   };
   const confirmAll = () => {
     setSummaryReviewed(true);
-    setFields((arr) => arr.map((f) => ({ ...f, confirmed: true })));
+    setFields((arr) => arr.map((f) => f.skipped ? f : ({ ...f, confirmed: true })));
     setPathStep(3);
-    toast.success("All 7 fields confirmed");
+    const willConfirm = fields.filter(f => !f.skipped && !f.confirmed).length;
+    toast.success(`${willConfirm} field${willConfirm === 1 ? "" : "s"} confirmed`);
   };
   const toggleSource = (k: FieldKey) => {
     setExpandedSources((s) => {
@@ -203,6 +215,8 @@ const Index = () => {
                 summaryReviewed={summaryReviewed}
                 synced={synced}
                 confirmedCount={confirmedCount}
+                skippedCount={skippedCount}
+                resolvedCount={resolvedCount}
                 onConfirmAll={confirmAll}
                 onSync={() => setShowSync(true)}
                 onSaveDraft={() => {
@@ -245,6 +259,7 @@ const Index = () => {
                     expanded={expandedSources.has(f.key)}
                     onToggleSource={() => toggleSource(f.key)}
                     onConfirm={() => toggleConfirm(f.key)}
+                    onSkip={() => toggleSkip(f.key)}
                     diff={voiceDiff?.includes(f.key)}
                   />
                 ))}
@@ -462,15 +477,15 @@ function Row({ label, value, edit }: { label: string; value: React.ReactNode; ed
 // Center — Summary + fields + amendment
 // ============================================================================
 
-function CenterHeader({ summaryReviewed, synced, confirmedCount, onConfirmAll, onSync, onSaveDraft }: {
-  summaryReviewed: boolean; synced: boolean; confirmedCount: number; onConfirmAll: () => void; onSync: () => void; onSaveDraft: () => void;
+function CenterHeader({ summaryReviewed, synced, confirmedCount, skippedCount, resolvedCount, onConfirmAll, onSync, onSaveDraft }: {
+  summaryReviewed: boolean; synced: boolean; confirmedCount: number; skippedCount: number; resolvedCount: number; onConfirmAll: () => void; onSync: () => void; onSaveDraft: () => void;
 }) {
   const total = 7;
-  const allConfirmed = confirmedCount === total;
-  const remaining = total - confirmedCount;
-  const pct = (confirmedCount / total) * 100;
-  const syncDisabled = !synced && !allConfirmed;
-  const tooltip = syncDisabled ? `Confirm all 7 fields below before syncing to Salesforce. (${confirmedCount} of 7 confirmed)` : "";
+  const allResolved = resolvedCount === total;
+  const remaining = total - resolvedCount;
+  const pct = (resolvedCount / total) * 100;
+  const syncDisabled = !synced && !allResolved;
+  const tooltip = syncDisabled ? `Confirm or skip all 7 fields before syncing. (${resolvedCount} of 7 resolved)` : "";
   return (
     <div className="space-y-2">
       <div className="flex items-start justify-between gap-3">
@@ -479,20 +494,20 @@ function CenterHeader({ summaryReviewed, synced, confirmedCount, onConfirmAll, o
             Review &amp; Confirm <span className="text-muted-foreground font-normal">· {total} Fields from Your Call</span>
           </div>
           <div className="text-[12px] text-muted-foreground mt-1">
-            Pulse drafted these from your Zoom call. Confirm each field is accurate, then sync to Salesforce.
+            Pulse drafted these from your Zoom call. Confirm each field — or skip any the AI got wrong — then sync to Salesforce.
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {allConfirmed ? (
+          {allResolved ? (
             <span className="h-8 px-3 text-[12px] font-medium bg-success/10 text-success border border-success/30 rounded flex items-center gap-1.5">
-              <Check className="w-3.5 h-3.5" /> All Fields Confirmed
+              <Check className="w-3.5 h-3.5" /> All Fields Resolved
             </span>
           ) : (
             <button
               onClick={onConfirmAll}
               className="h-8 px-3 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 shrink-0"
             >
-              {confirmedCount === 0 ? "Confirm All Fields" : `Confirm Remaining (${remaining})`}
+              {resolvedCount === 0 ? "Confirm All Fields" : `Confirm Remaining (${remaining})`}
             </button>
           )}
           <button
@@ -514,16 +529,14 @@ function CenterHeader({ summaryReviewed, synced, confirmedCount, onConfirmAll, o
         </div>
       </div>
       <div className="space-y-1">
-        <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-          <div
-            className="h-full bg-success transition-all duration-300"
-            style={{ width: `${pct}%` }}
-          />
+        <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden flex">
+          <div className="h-full bg-success transition-all duration-300" style={{ width: `${(confirmedCount / total) * 100}%` }} />
+          <div className="h-full bg-muted-foreground/40 transition-all duration-300" style={{ width: `${(skippedCount / total) * 100}%` }} />
         </div>
-        <div className={cn("text-[11px] font-medium", allConfirmed ? "text-success" : "text-muted-foreground")}>
-          {allConfirmed
-            ? `Ready to sync · all ${total} fields confirmed`
-            : `${confirmedCount} of ${total} confirmed`}
+        <div className={cn("text-[11px] font-medium", allResolved ? "text-success" : "text-muted-foreground")}>
+          {allResolved
+            ? `Ready to sync · ${confirmedCount} confirmed${skippedCount ? `, ${skippedCount} skipped` : ""}`
+            : `${confirmedCount} confirmed${skippedCount ? ` · ${skippedCount} skipped` : ""} · ${total - resolvedCount} remaining`}
         </div>
       </div>
     </div>
@@ -571,8 +584,8 @@ function SummaryBlock({ summary, setSummary, editing, setEditing, reviewed, setR
   );
 }
 
-function FieldCard({ field, position, total, expanded, onToggleSource, onConfirm, diff }: {
-  field: Field; position: number; total: number; expanded: boolean; onToggleSource: () => void; onConfirm: () => void; diff?: boolean;
+function FieldCard({ field, position, total, expanded, onToggleSource, onConfirm, onSkip, diff }: {
+  field: Field; position: number; total: number; expanded: boolean; onToggleSource: () => void; onConfirm: () => void; onSkip: () => void; diff?: boolean;
 }) {
   const dot = field.confidence === "high" ? "bg-success" : field.confidence === "med" ? "bg-warning" : "bg-destructive";
   const dotLabel = field.confidence === "high" ? "High confidence" : field.confidence === "med" ? "Medium confidence" : "Low confidence";
@@ -581,13 +594,14 @@ function FieldCard({ field, position, total, expanded, onToggleSource, onConfirm
       className={cn(
         "bg-card border border-border rounded transition-all relative",
         field.confirmed && "border-l-4 border-l-success",
+        field.skipped && "border-l-4 border-l-muted-foreground/50 opacity-70",
         diff && "ring-2 ring-primary/50 bg-accent/30"
       )}
     >
       <span
         className={cn(
           "absolute top-2 right-3 font-mono text-[10px] tabular-nums",
-          field.confirmed ? "text-success" : "text-muted-foreground"
+          field.confirmed ? "text-success" : field.skipped ? "text-muted-foreground" : "text-muted-foreground"
         )}
       >
         {position} of {total}
@@ -600,14 +614,19 @@ function FieldCard({ field, position, total, expanded, onToggleSource, onConfirm
             <span className="text-[10px] bg-info border border-info-border text-primary px-1.5 py-0.5 rounded flex items-center gap-1">
               <Video className="w-2.5 h-2.5" /> From your call
             </span>
-            {!field.confirmed && !diff && (
+            {!field.confirmed && !field.skipped && !diff && (
               <span className="text-[10px] font-bold text-warning-foreground bg-[#FFF7E6] border border-warning/40 px-1.5 py-0.5 rounded">Draft</span>
+            )}
+            {field.skipped && (
+              <span className="text-[10px] font-bold text-muted-foreground bg-secondary border border-border px-1.5 py-0.5 rounded flex items-center gap-1">
+                <X className="w-2.5 h-2.5" /> Skipped — won't sync
+              </span>
             )}
             {diff && (
               <span className="text-[10px] font-bold text-primary bg-accent border border-primary/30 px-1.5 py-0.5 rounded">Voice update</span>
             )}
           </div>
-          <div className="text-[14px] text-foreground mt-1">{field.value}</div>
+          <div className={cn("text-[14px] text-foreground mt-1", field.skipped && "line-through text-muted-foreground")}>{field.value}</div>
           <button
             onClick={onToggleSource}
             className="mt-2 text-[11px] text-primary hover:underline flex items-center gap-1"
@@ -621,17 +640,31 @@ function FieldCard({ field, position, total, expanded, onToggleSource, onConfirm
             </div>
           )}
         </div>
-        <button
-          onClick={onConfirm}
-          className={cn(
-            "h-7 px-3 text-[11px] font-medium rounded shrink-0 border",
-            field.confirmed
-              ? "bg-success text-success-foreground border-success"
-              : "border-primary text-primary hover:bg-primary/5"
-          )}
-        >
-          {field.confirmed ? <span className="flex items-center gap-1"><Check className="w-3 h-3" /> Confirmed</span> : "Confirm"}
-        </button>
+        <div className="flex flex-col gap-1.5 shrink-0">
+          <button
+            onClick={onConfirm}
+            className={cn(
+              "h-7 px-3 text-[11px] font-medium rounded border",
+              field.confirmed
+                ? "bg-success text-success-foreground border-success"
+                : "border-primary text-primary hover:bg-primary/5"
+            )}
+          >
+            {field.confirmed ? <span className="flex items-center gap-1"><Check className="w-3 h-3" /> Confirmed</span> : "Confirm"}
+          </button>
+          <button
+            onClick={onSkip}
+            title={field.skipped ? "Restore this field" : "Skip — don't sync this field to Salesforce"}
+            className={cn(
+              "h-7 px-3 text-[11px] font-medium rounded border",
+              field.skipped
+                ? "bg-muted-foreground/10 text-foreground border-muted-foreground/40"
+                : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+            )}
+          >
+            {field.skipped ? <span className="flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Restore</span> : <span className="flex items-center gap-1"><X className="w-3 h-3" /> Skip</span>}
+          </button>
+        </div>
       </div>
     </div>
   );
