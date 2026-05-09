@@ -809,6 +809,15 @@ function SyncModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
   const [showLineage, setShowLineage] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [stepState, setStepState] = useState<0 | 1 | 2 | 3>(0); // sync row currently in progress
+  const [simulateError, setSimulateError] = useState(false);
+  const [errored, setErrored] = useState(false);
+
+  const SYNC_STEPS = [
+    { label: "Validating field permissions...", done: "Field permissions validated", ms: 400 },
+    { label: "Writing 7 fields to Maya Chen's record...", done: "7 fields written to Maya Chen's record", ms: 800 },
+    { label: "Logging activity to pipeline...", done: "Activity logged to pipeline", ms: 600 },
+  ];
 
   const ORIGINAL = [
     { key: "outcome", label: "Call outcome", value: "Qualified — moving to security review" },
