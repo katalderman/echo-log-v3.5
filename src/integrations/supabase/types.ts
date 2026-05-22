@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      call_briefs: {
+        Row: {
+          account_context: string | null
+          call_id: string
+          created_at: string
+          id: string
+          last_touchpoint: string | null
+          talking_points: Json
+          updated_at: string
+        }
+        Insert: {
+          account_context?: string | null
+          call_id: string
+          created_at?: string
+          id?: string
+          last_touchpoint?: string | null
+          talking_points?: Json
+          updated_at?: string
+        }
+        Update: {
+          account_context?: string | null
+          call_id?: string
+          created_at?: string
+          id?: string
+          last_touchpoint?: string | null
+          talking_points?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_briefs_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       call_fields: {
         Row: {
           call_id: string
@@ -79,6 +117,91 @@ export type Database = {
           },
         ]
       }
+      call_sessions: {
+        Row: {
+          call_id: string
+          connection_lost_at: string | null
+          created_at: string
+          id: string
+          platform: string | null
+          started_at: string
+          status: Database["public"]["Enums"]["call_session_status"]
+          updated_at: string
+        }
+        Insert: {
+          call_id: string
+          connection_lost_at?: string | null
+          created_at?: string
+          id?: string
+          platform?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["call_session_status"]
+          updated_at?: string
+        }
+        Update: {
+          call_id?: string
+          connection_lost_at?: string | null
+          created_at?: string
+          id?: string
+          platform?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["call_session_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_sessions_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      call_timeline_items: {
+        Row: {
+          call_id: string
+          created_at: string
+          description: string | null
+          id: string
+          item_type: Database["public"]["Enums"]["timeline_item_type"]
+          occurred_at: string
+          position: number
+          title: string
+          when_label: string | null
+        }
+        Insert: {
+          call_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          item_type: Database["public"]["Enums"]["timeline_item_type"]
+          occurred_at?: string
+          position?: number
+          title: string
+          when_label?: string | null
+        }
+        Update: {
+          call_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          item_type?: Database["public"]["Enums"]["timeline_item_type"]
+          occurred_at?: string
+          position?: number
+          title?: string
+          when_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_timeline_items_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calls: {
         Row: {
           amount_cents: number | null
@@ -95,6 +218,7 @@ export type Database = {
           outcome: Database["public"]["Enums"]["call_outcome"] | null
           owner_id: string | null
           phone: string | null
+          slug: string | null
           status: Database["public"]["Enums"]["call_status"]
           summary: string | null
           synced_at: string | null
@@ -116,6 +240,7 @@ export type Database = {
           outcome?: Database["public"]["Enums"]["call_outcome"] | null
           owner_id?: string | null
           phone?: string | null
+          slug?: string | null
           status?: Database["public"]["Enums"]["call_status"]
           summary?: string | null
           synced_at?: string | null
@@ -137,11 +262,147 @@ export type Database = {
           outcome?: Database["public"]["Enums"]["call_outcome"] | null
           owner_id?: string | null
           phone?: string | null
+          slug?: string | null
           status?: Database["public"]["Enums"]["call_status"]
           summary?: string | null
           synced_at?: string | null
           title?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      contacts: {
+        Row: {
+          account_name: string | null
+          amount_cents: number | null
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          owner_id: string
+          phone: string | null
+          stage: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_name?: string | null
+          amount_cents?: number | null
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          owner_id: string
+          phone?: string | null
+          stage?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string | null
+          amount_cents?: number | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          owner_id?: string
+          phone?: string | null
+          stage?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      meeting_integrations: {
+        Row: {
+          connected_at: string | null
+          created_at: string
+          id: string
+          last_synced_at: string | null
+          provider: Database["public"]["Enums"]["meeting_provider"]
+          status: Database["public"]["Enums"]["integration_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connected_at?: string | null
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          provider: Database["public"]["Enums"]["meeting_provider"]
+          status?: Database["public"]["Enums"]["integration_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connected_at?: string | null
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          provider?: Database["public"]["Enums"]["meeting_provider"]
+          status?: Database["public"]["Enums"]["integration_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          initials: string
+          team_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id: string
+          initials: string
+          team_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          initials?: string
+          team_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      review_metrics: {
+        Row: {
+          calls_reviewed: number
+          created_at: string
+          id: string
+          pct_unedited: number
+          period_start: string
+          seconds_saved: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calls_reviewed?: number
+          created_at?: string
+          id?: string
+          pct_unedited?: number
+          period_start: string
+          seconds_saved?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calls_reviewed?: number
+          created_at?: string
+          id?: string
+          pct_unedited?: number
+          period_start?: string
+          seconds_saved?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -160,8 +421,12 @@ export type Database = {
         | "Voicemail"
         | "Discovery"
         | "Lost"
+      call_session_status: "live" | "dropped" | "ended"
       call_status: "drafted" | "in_review" | "draft_saved" | "synced" | "failed"
       field_confidence: "high" | "med" | "low"
+      integration_status: "connected" | "disconnected"
+      meeting_provider: "zoom" | "teams" | "google_meet" | "granola" | "otter"
+      timeline_item_type: "call" | "email" | "task" | "note"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -297,8 +562,12 @@ export const Constants = {
         "Discovery",
         "Lost",
       ],
+      call_session_status: ["live", "dropped", "ended"],
       call_status: ["drafted", "in_review", "draft_saved", "synced", "failed"],
       field_confidence: ["high", "med", "low"],
+      integration_status: ["connected", "disconnected"],
+      meeting_provider: ["zoom", "teams", "google_meet", "granola", "otter"],
+      timeline_item_type: ["call", "email", "task", "note"],
     },
   },
 } as const
