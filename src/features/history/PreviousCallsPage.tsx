@@ -1,10 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Phone, Mail, Filter, Check, TrendingUp, Clock, Award, AlertCircle, RefreshCw, Inbox } from "lucide-react";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
 import { StateControls, Skeleton, ScreenState } from "@/components/shell/StateControls";
 import { cn } from "@/lib/utils";
-import { PREVIOUS_CALLS, Outcome } from "@/data/calls";
+import { Outcome } from "@/data/calls";
+import {
+  usePreviousCalls,
+  useReviewMetrics,
+  formatCallDate,
+  formatDuration,
+  formatSyncedAt,
+} from "@/lib/queries";
 
 const TIME_FILTERS = ["All", "This Week", "This Month", "Last Quarter", "Custom range"];
 const OUTCOMES: ("All Outcomes" | Outcome)[] = ["All Outcomes", "Qualified", "Booked", "No Answer", "Voicemail"];
@@ -23,36 +30,39 @@ export default function PreviousCallsPage() {
   const [search, setSearch] = useState("");
   const [time, setTime] = useState("All");
   const [outcome, setOutcome] = useState<typeof OUTCOMES[number]>("All Outcomes");
-  const [screenState, setScreenState] = useState<ScreenState>("loading");
+  const [stateOverride, setStateOverride] = useState<ScreenState | "auto">("auto");
   const [showErrorDetails, setShowErrorDetails] = useState(false);
 
-  // Loading state ≥ 600ms even if instant.
-  useEffect(() => {
-    if (screenState !== "loading") return;
-    const t = window.setTimeout(() => setScreenState("normal"), 700);
-    return () => clearTimeout(t);
-  }, [screenState]);
+  const callsQuery = usePreviousCalls();
+  const metricsQuery = useReviewMetrics();
 
-  // Trigger loading shimmer briefly on filter change.
-  useEffect(() => {
-    if (screenState === "error" || screenState === "empty") return;
-    setScreenState("loading");
-  }, [search, time, outcome]);
+  // Derive screen state: explicit override wins, otherwise driven by the query.
+  const screenState: ScreenState =
+    stateOverride !== "auto"
+      ? stateOverride
+      : callsQuery.isLoading
+      ? "loading"
+      : callsQuery.isError
+      ? "error"
+      : (callsQuery.data ?? []).length === 0
+      ? "empty"
+      : "normal";
 
   const rows = useMemo(() => {
-    return PREVIOUS_CALLS.filter((c) => {
+    const all = callsQuery.data ?? [];
+    return all.filter((c) => {
       if (outcome !== "All Outcomes" && c.outcome !== outcome) return false;
       if (search) {
         const q = search.toLowerCase();
         return (
-          c.contact.toLowerCase().includes(q) ||
+          c.contact_name.toLowerCase().includes(q) ||
           c.company.toLowerCase().includes(q) ||
-          c.outcome.toLowerCase().includes(q)
+          (c.outcome ?? "").toLowerCase().includes(q)
         );
       }
       return true;
     });
-  }, [search, time, outcome]);
+  }, [search, time, outcome, callsQuery.data]);
 
   const clearFilters = () => {
     setSearch("");
@@ -60,6 +70,9 @@ export default function PreviousCallsPage() {
     setOutcome("All Outcomes");
   };
   const isBrandNew = screenState === "empty";
+  const totalCount = callsQuery.data?.length ?? 0;
+  const metrics = metricsQuery.data;
+
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
