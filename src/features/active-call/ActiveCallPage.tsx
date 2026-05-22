@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Phone, Video, MicOff, ChevronDown, ChevronRight, Check, FileText, Sparkles, Zap,
@@ -7,32 +7,74 @@ import {
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
 import { StateControls, Skeleton, ScreenState } from "@/components/shell/StateControls";
 import { cn } from "@/lib/utils";
+import { useCall, useCallBrief, useCallSession } from "@/lib/queries";
 
 const STEPS = ["Call In Progress", "Call Ended", "AI Drafting", "Ready for Review", "Confirmed", "Synced"];
 
+// The prototype's /calls/active route shows a single mocked live call.
+// Slug is fixed for now; real apps would resolve this from a router param.
+const ACTIVE_CALL_SLUG = "maya-chen";
+
+function useTick(intervalMs = 1000) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), intervalMs);
+    return () => clearInterval(t);
+  }, [intervalMs]);
+}
+
 export default function ActiveCallPage() {
   const navigate = useNavigate();
-  const [elapsed, setElapsed] = useState(8 * 60);
   const [note, setNote] = useState("");
   const [muted, setMuted] = useState(false);
-  const [briefState, setBriefState] = useState<ScreenState>("loading");
+  const [stateOverride, setStateOverride] = useState<ScreenState | "auto">("auto");
   const [showQuickNote, setShowQuickNote] = useState(false);
 
-  useEffect(() => {
-    const t = setInterval(() => setElapsed((s) => s + 1), 1000);
-    return () => clearInterval(t);
-  }, []);
+  // Re-render every second so the elapsed/lost-connection timers stay live.
+  useTick(1000);
 
-  // Loading state must hold for at least 600ms even if "fetch" is instant.
-  useEffect(() => {
-    if (briefState !== "loading") return;
-    const t = window.setTimeout(() => setBriefState("normal"), 900);
-    return () => clearTimeout(t);
-  }, [briefState]);
+  const callQuery = useCall(ACTIVE_CALL_SLUG);
+  const call = callQuery.data ?? null;
+  const briefQuery = useCallBrief(call?.id);
+  const sessionQuery = useCallSession(call?.id);
+
+  const isLoading = callQuery.isLoading || briefQuery.isLoading || sessionQuery.isLoading;
+  const isError = callQuery.isError || briefQuery.isError || sessionQuery.isError;
+
+  // Brief panel state mirrors the StateControls toggle so the demo still works,
+  // while real loading/error states are derived from the queries.
+  const briefState: ScreenState =
+    stateOverride !== "auto"
+      ? stateOverride
+      : isLoading
+      ? "loading"
+      : isError
+      ? "error"
+      : !briefQuery.data
+      ? "empty"
+      : "normal";
+
+  const session = sessionQuery.data;
+  const brief = briefQuery.data;
+  const zoomDropped = briefState === "error" || session?.status === "dropped";
+
+  // Elapsed: now - session.started_at (clamped to 0).
+  const elapsed = useMemo(() => {
+    if (!session?.started_at) return 0;
+    return Math.max(0, Math.floor((Date.now() - new Date(session.started_at).getTime()) / 1000));
+  }, [session?.started_at, Date.now()]);
+
+  const secondsSinceDrop = useMemo(() => {
+    if (!session?.connection_lost_at) return null;
+    return Math.max(0, Math.floor((Date.now() - new Date(session.connection_lost_at).getTime()) / 1000));
+  }, [session?.connection_lost_at, Date.now()]);
 
   const mins = Math.floor(elapsed / 60);
   const secs = (elapsed % 60).toString().padStart(2, "0");
-  const zoomDropped = briefState === "error";
+  const platform = session?.platform ?? "Zoom";
+  const talkingPoints: string[] = Array.isArray(brief?.talking_points)
+    ? (brief!.talking_points as unknown[]).filter((p): p is string => typeof p === "string")
+    : [];
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
@@ -41,13 +83,16 @@ export default function ActiveCallPage() {
         <TopBar />
         <BreadcrumbTabs
           crumbs={[{ label: "Calls", to: "/" }, { label: "Active Call" }]}
-          tab={{ label: "Maya Chen — Northwind Robotics", closable: false }}
+          tab={{ label: call ? `${call.contact_name} — ${call.company}` : "Active Call", closable: false }}
           tabIcon={Phone}
         />
 
         <main className="flex-1 px-6 py-4 space-y-4">
           <div className="flex justify-end">
-            <StateControls value={briefState} onChange={setBriefState} />
+            <StateControls
+              value={stateOverride === "auto" ? "normal" : stateOverride}
+              onChange={(v) => setStateOverride(v as ScreenState)}
+            />
           </div>
 
           {/* Record header */}
@@ -68,11 +113,11 @@ export default function ActiveCallPage() {
                 style={{ color: zoomDropped ? "hsl(var(--warning))" : "hsl(var(--teal))" }}
               >
                 <span className={cn("w-2 h-2 rounded-full", zoomDropped ? "bg-warning" : "bg-teal animate-pulse")} />
-                {zoomDropped ? "Active Call · Zoom Disconnected" : "Active Call · Connected to Zoom"}
+                {zoomDropped ? `Active Call · ${platform} Disconnected` : `Active Call · Connected to ${platform}`}
               </div>
-              <div className="text-[22px] font-semibold leading-tight">Maya Chen</div>
+              <div className="text-[22px] font-semibold leading-tight">{call?.contact_name ?? "—"}</div>
               <div className="text-[12px] text-muted-foreground mt-0.5">
-                Live Zoom call · started {Math.floor(elapsed / 60)} min ago · elapsed {mins}:{secs}
+                Live {platform} call · started {Math.floor(elapsed / 60)} min ago · elapsed {mins}:{secs}
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -99,13 +144,15 @@ export default function ActiveCallPage() {
             <div className="bg-warning/10 border border-l-4 border-l-warning border-warning/40 rounded px-4 py-2.5 flex items-center gap-4 text-[12px]">
               <div className="flex items-center gap-2 shrink-0">
                 <AlertTriangle className="w-4 h-4 text-warning" />
-                <span className="font-semibold">Lost connection to Zoom 12 seconds ago.</span>
+                <span className="font-semibold">
+                  Lost connection to {platform} {secondsSinceDrop !== null ? `${secondsSinceDrop} seconds` : "moments"} ago.
+                </span>
               </div>
               <div className="flex-1 text-muted-foreground">
                 Pulse will resume drafting when reconnected. Your in-call notes are saved locally.
               </div>
               <button
-                onClick={() => setBriefState("normal")}
+                onClick={() => { setStateOverride("auto"); sessionQuery.refetch(); }}
                 className="text-primary font-medium hover:underline shrink-0 flex items-center gap-1"
               >
                 <RefreshCw className="w-3 h-3" /> Retry connection
@@ -115,7 +162,7 @@ export default function ActiveCallPage() {
             <div className="bg-info border border-info-border rounded px-4 py-2.5 flex items-center gap-4 text-[12px]">
               <div className="flex items-center gap-2 shrink-0">
                 <div className="w-5 h-5 rounded bg-[#2D8CFF] grid place-items-center"><Video className="w-3 h-3 text-white" /></div>
-                <span className="font-semibold">Connected to your Zoom call · started 8 min ago</span>
+                <span className="font-semibold">Connected to your {platform} call · started {Math.floor(elapsed / 60)} min ago</span>
               </div>
               <div className="flex-1 text-muted-foreground">
                 Pulse will draft fields after the call ends. Nothing is being written to Salesforce yet.
@@ -147,7 +194,16 @@ export default function ActiveCallPage() {
           <div className="grid grid-cols-12 gap-4">
             {/* Left: About this Call (read-only context) */}
             <div className="col-span-3">
-              <AboutCard />
+              <AboutCard
+                contactName={call?.contact_name}
+                title={call?.title}
+                company={call?.company}
+                email={call?.email}
+                amount={call?.amount_cents}
+                platform={platform}
+                startedAt={session?.started_at}
+                elapsedMin={Math.floor(elapsed / 60)}
+              />
             </div>
 
             {/* Center: Pre-Call Brief + What Pulse captures */}
@@ -190,26 +246,26 @@ export default function ActiveCallPage() {
                 </div>
               ) : (
                 <div className="bg-card border border-border rounded">
-                  <div className="px-4 py-3 border-b border-border">
-                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Account context</div>
-                    <div className="text-[13px] mt-1 leading-relaxed">
-                      Northwind Robotics tried building this internally — 18% adoption, $2M sunk. CEO threatening to buy Gong. Maya owns the technical decision; Marcus Lee (CFO) signs anything {">"} $50K.
+                  {brief?.account_context && (
+                    <div className="px-4 py-3 border-b border-border">
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Account context</div>
+                      <div className="text-[13px] mt-1 leading-relaxed">{brief.account_context}</div>
                     </div>
-                  </div>
-                  <div className="px-4 py-3 border-b border-border">
-                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Last touchpoint</div>
-                    <div className="text-[13px] mt-1 leading-relaxed">
-                      Demo on Apr 14 (32m). Maya: <span className="italic">"This is exactly what we built and failed at."</span> Asked for SSO/audit and Pipedrive migration details on follow-up.
+                  )}
+                  {brief?.last_touchpoint && (
+                    <div className="px-4 py-3 border-b border-border">
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Last touchpoint</div>
+                      <div className="text-[13px] mt-1 leading-relaxed">{brief.last_touchpoint}</div>
                     </div>
-                  </div>
-                  <div className="px-4 py-3">
-                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Talking points</div>
-                    <ul className="text-[13px] space-y-1.5 leading-relaxed list-disc pl-5">
-                      <li>SOC 2 Type II + audit log capabilities (kill objection #1)</li>
-                      <li>Pipedrive → Salesforce migration tooling demo (kill objection #2)</li>
-                      <li>Q2 implementation timeline confirmation + procurement path through Marcus</li>
-                    </ul>
-                  </div>
+                  )}
+                  {talkingPoints.length > 0 && (
+                    <div className="px-4 py-3">
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Talking points</div>
+                      <ul className="text-[13px] space-y-1.5 leading-relaxed list-disc pl-5">
+                        {talkingPoints.map((p, i) => <li key={i}>{p}</li>)}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -241,18 +297,22 @@ export default function ActiveCallPage() {
                   <div className="text-[13px] font-semibold">Live Talking Points</div>
                   <div className="text-[10px] text-muted-foreground">Your pre-call notes, ready to glance.</div>
                 </div>
-                <ul className="p-3 space-y-2">
-                  {[
-                    "Lead with: 'We saw what happened with your internal build — Gong is also a different bet.'",
-                    "Anchor price at $72K mid-band; Marcus's $50K threshold is approval, not budget.",
-                    "Ask: 'If sandbox is in your hands by Friday, what does Marcus need to see Monday?'",
-                  ].map((p, i) => (
-                    <li key={i} className="flex gap-2">
-                      <span className="text-primary font-semibold shrink-0">{i + 1}.</span>
-                      <span className="leading-snug">{p}</span>
-                    </li>
-                  ))}
-                </ul>
+                {briefState === "loading" ? (
+                  <div className="p-3 space-y-2">
+                    {[0, 1, 2].map((i) => <Skeleton key={i} className="h-3 w-full" />)}
+                  </div>
+                ) : talkingPoints.length === 0 ? (
+                  <div className="p-3 text-[11px] text-muted-foreground">No talking points for this call yet.</div>
+                ) : (
+                  <ul className="p-3 space-y-2">
+                    {talkingPoints.map((p, i) => (
+                      <li key={i} className="flex gap-2">
+                        <span className="text-primary font-semibold shrink-0">{i + 1}.</span>
+                        <span className="leading-snug">{p}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div className="bg-card border border-border rounded">
@@ -284,25 +344,40 @@ export default function ActiveCallPage() {
   );
 }
 
-function AboutCard() {
+function AboutCard({
+  contactName, title, company, email, amount, platform, startedAt, elapsedMin,
+}: {
+  contactName?: string | null;
+  title?: string | null;
+  company?: string | null;
+  email?: string | null;
+  amount?: number | null;
+  platform: string;
+  startedAt?: string | null;
+  elapsedMin: number;
+}) {
+  const startedLabel = startedAt
+    ? new Date(startedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    : "—";
+  const amountLabel = amount != null ? `$${Math.round(amount / 100).toLocaleString()}` : "—";
   return (
     <div className="bg-card border border-border rounded text-[12px]">
       <div className="px-3 py-2 border-b border-border font-semibold text-[13px]">About this Call</div>
       <Section title="Meeting Source" defaultOpen>
-        <Row label="Platform" value={<span className="flex items-center gap-1.5"><Video className="w-3 h-3 text-[#2D8CFF]" /> Zoom Meeting</span>} />
+        <Row label="Platform" value={<span className="flex items-center gap-1.5"><Video className="w-3 h-3 text-[#2D8CFF]" /> {platform}</span>} />
         <Row label="Status" value={<span className="text-teal flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-teal animate-pulse" /> Live</span>} />
-        <Row label="Started" value="2:00 PM (8 min ago)" />
+        <Row label="Started" value={`${startedLabel} (${elapsedMin} min ago)`} />
         <Row label="Recording" value="In progress" />
       </Section>
       <Section title="Contact Details" defaultOpen>
-        <Row label="Name" value="Maya Chen" />
-        <Row label="Title" value="Director of RevOps" />
-        <Row label="Email" value="maya@northwind-robotics.io" />
+        <Row label="Name" value={contactName ?? "—"} />
+        <Row label="Title" value={title ?? "—"} />
+        <Row label="Email" value={email ?? "—"} />
       </Section>
       <Section title="Deal Context">
-        <Row label="Account" value="Northwind Robotics" />
+        <Row label="Account" value={company ?? "—"} />
         <Row label="Stage" value="Qualification" />
-        <Row label="Amount" value="$72,000" />
+        <Row label="Amount" value={amountLabel} />
       </Section>
     </div>
   );
