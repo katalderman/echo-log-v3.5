@@ -162,9 +162,10 @@ export default function PreviousCallsPage() {
                     </div>
                     <div className="mt-4 flex items-center justify-center gap-3">
                       <button
-                        onClick={() => setScreenState("loading")}
+                        onClick={() => { setStateOverride("auto"); callsQuery.refetch(); }}
                         className="h-8 px-4 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 flex items-center gap-1.5"
                       >
+
                         <RefreshCw className="w-3.5 h-3.5" /> Refresh
                       </button>
                       <button
