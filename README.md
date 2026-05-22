@@ -108,6 +108,33 @@ happened* on Review (edits, skips) instead of a canned snapshot.
 
 ---
 
+## Data layer
+
+Read paths for the **Previous Calls** and **Active Call** screens are
+backed by Lovable Cloud (Supabase). All read hooks live in
+`src/lib/queries.ts`:
+
+| Hook                  | Reads from                |
+| --------------------- | ------------------------- |
+| `useCallsQueue()`     | `calls` (in-review/drafted) |
+| `usePreviousCalls()`  | `calls` (synced)          |
+| `useCall(slug)`       | `calls` by slug           |
+| `useCallFields(id)`   | `call_fields`             |
+| `useCallBrief(id)`    | `call_briefs`             |
+| `useCallTimeline(id)` | `call_timeline_items`     |
+| `useCallSession(id)`  | `call_sessions`           |
+| `useReviewMetrics()`  | `review_metrics`          |
+
+Pages render real loading/error/empty states off the React Query
+status. The `StateControls` widget remains as a demo override that lets
+you preview any state on top of the live data.
+
+The **Review & Confirm** write path (`useReviewState`,
+`useSyncedPayload`) still uses `localStorage` — migration to the
+database is the next planned commit.
+
+---
+
 ## Running locally
 
 ```sh
@@ -118,8 +145,8 @@ npm run dev
 Routes worth visiting:
 
 - `/` — Review & Confirm (the main screen)
-- `/calls/active` — Active call mock
-- `/calls/history` — Previous calls table
+- `/calls/active` — Active call (live, backed by `calls` + `call_briefs` + `call_sessions`)
+- `/calls/history` — Previous calls table (backed by `calls` + `review_metrics`)
 - `/calls/complete/maya-chen` — Synced screen (after a sync, or empty fallback)
 
 ---
@@ -128,17 +155,18 @@ Routes worth visiting:
 
 ### Add authentication & lock down the database
 
-Lovable Cloud is wired up and two tables exist (`calls`, `call_fields`),
-but **row-level security is currently open** — anyone with the anon key can
-read or write any row. This is intentional for the prototype; it is **not
-safe for production**.
+Tables are in place (`calls`, `call_fields`, `profiles`, `contacts`,
+`call_briefs`, `call_timeline_items`, `call_sessions`, `review_metrics`,
+`meeting_integrations`), but **row-level security is currently open** —
+anyone with the anon key can read or write any row. This is intentional
+for the prototype; it is **not safe for production**.
 
 Before shipping:
 
 1. Add authentication (email/password + Google sign-in is the default).
-2. Replace the open RLS policies on `calls` and `call_fields` with policies
-   scoped to `owner_id = auth.uid()` (and join through `call_id` for
-   `call_fields`).
+2. Replace the open RLS policies with policies scoped to
+   `owner_id = auth.uid()` (and equivalent joins for child tables).
 3. Set `owner_id` on insert from the authenticated user.
-4. Migrate the existing `localStorage` reads/writes in `useReviewState`
+4. Migrate the remaining `localStorage` reads/writes in `useReviewState`
    and `useSyncedPayload` over to the database.
+
