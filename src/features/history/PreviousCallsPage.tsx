@@ -303,9 +303,10 @@ export default function PreviousCallsPage() {
                   <div className="text-[10px] text-muted-foreground">This month</div>
                 </div>
                 <div className="p-3 space-y-3">
-                  <StatRow I={Phone} label="Calls reviewed" value="47" tone="text-foreground" />
-                  <StatRow I={Clock} label="Time saved" value="18m" tone="text-success" sub="vs manual entry" />
-                  <StatRow I={Award} label="Confirmed without amendment" value="96%" tone="text-success" sub="trust signal" />
+                  <StatRow I={Phone} label="Calls reviewed" value={metrics ? String(metrics.calls_reviewed) : "—"} tone="text-foreground" />
+                  <StatRow I={Clock} label="Time saved" value={metrics ? `${Math.round(metrics.seconds_saved / 60)}m` : "—"} tone="text-success" sub="vs manual entry" />
+                  <StatRow I={Award} label="Confirmed without amendment" value={metrics ? `${Math.round(Number(metrics.pct_unedited))}%` : "—"} tone="text-success" sub="trust signal" />
+
                   <div className="bg-info border border-info-border rounded p-2 text-[11px] text-primary mt-2">
                     <div className="flex items-center gap-1.5 font-semibold">
                       <TrendingUp className="w-3 h-3" /> Top 5% on team
