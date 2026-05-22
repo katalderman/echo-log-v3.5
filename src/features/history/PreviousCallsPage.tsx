@@ -255,30 +255,32 @@ export default function PreviousCallsPage() {
                       {rows.map((c) => (
                         <tr
                           key={c.id}
-                          onClick={() => navigate(`/calls/complete/${c.id}`)}
+                          onClick={() => navigate(`/calls/complete/${c.slug}`)}
                           className="hover:bg-secondary/40 cursor-pointer"
                         >
                           <td className="px-3 py-2.5">
-                            <span className="text-primary font-medium hover:underline">{c.contact}</span>
+                            <span className="text-primary font-medium hover:underline">{c.contact_name}</span>
                             <div className="text-[10px] text-muted-foreground">{c.title}</div>
                           </td>
                           <td className="px-3 py-2.5">{c.company}</td>
-                          <td className="px-3 py-2.5">{c.date}</td>
-                          <td className="px-3 py-2.5 num">{c.duration}</td>
+                          <td className="px-3 py-2.5">{formatCallDate(c.call_date)}</td>
+                          <td className="px-3 py-2.5 num">{formatDuration(c.duration_seconds)}</td>
                           <td className="px-3 py-2.5">
-                            <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border", OUTCOME_STYLES[c.outcome])}>
-                              {c.outcome}
-                            </span>
+                            {c.outcome && (
+                              <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border", OUTCOME_STYLES[c.outcome as Outcome])}>
+                                {c.outcome}
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2.5 num">
-                            <span className={cn(c.fieldsConfirmed === c.fieldsTotal && "text-success font-medium")}>
-                              {c.fieldsConfirmed}/{c.fieldsTotal}
+                            <span className={cn(c.fields_confirmed === c.fields_total && "text-success font-medium")}>
+                              {c.fields_confirmed}/{c.fields_total}
                             </span>
                           </td>
-                          <td className="px-3 py-2.5 text-muted-foreground">{c.syncedAt}</td>
+                          <td className="px-3 py-2.5 text-muted-foreground">{formatSyncedAt(c.synced_at)}</td>
                           <td className="px-3 py-2.5 text-right pr-3">
                             <button
-                              onClick={(e) => { e.stopPropagation(); navigate(`/calls/complete/${c.id}`); }}
+                              onClick={(e) => { e.stopPropagation(); navigate(`/calls/complete/${c.slug}`); }}
                               className="h-7 px-3 text-[11px] font-medium border border-primary text-primary rounded hover:bg-primary/5"
                             >
                               View
@@ -289,6 +291,7 @@ export default function PreviousCallsPage() {
                     </tbody>
                   </table>
                 )}
+
               </div>
             </div>
 
