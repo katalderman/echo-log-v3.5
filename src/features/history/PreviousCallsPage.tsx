@@ -1,10 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Phone, Mail, Filter, Check, TrendingUp, Clock, Award, AlertCircle, RefreshCw, Inbox } from "lucide-react";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
 import { StateControls, Skeleton, ScreenState } from "@/components/shell/StateControls";
 import { cn } from "@/lib/utils";
-import { PREVIOUS_CALLS, Outcome } from "@/data/calls";
+import { Outcome } from "@/data/calls";
+import {
+  usePreviousCalls,
+  useReviewMetrics,
+  formatCallDate,
+  formatDuration,
+  formatSyncedAt,
+} from "@/lib/queries";
 
 const TIME_FILTERS = ["All", "This Week", "This Month", "Last Quarter", "Custom range"];
 const OUTCOMES: ("All Outcomes" | Outcome)[] = ["All Outcomes", "Qualified", "Booked", "No Answer", "Voicemail"];
@@ -23,36 +30,39 @@ export default function PreviousCallsPage() {
   const [search, setSearch] = useState("");
   const [time, setTime] = useState("All");
   const [outcome, setOutcome] = useState<typeof OUTCOMES[number]>("All Outcomes");
-  const [screenState, setScreenState] = useState<ScreenState>("loading");
+  const [stateOverride, setStateOverride] = useState<ScreenState | "auto">("auto");
   const [showErrorDetails, setShowErrorDetails] = useState(false);
 
-  // Loading state ≥ 600ms even if instant.
-  useEffect(() => {
-    if (screenState !== "loading") return;
-    const t = window.setTimeout(() => setScreenState("normal"), 700);
-    return () => clearTimeout(t);
-  }, [screenState]);
+  const callsQuery = usePreviousCalls();
+  const metricsQuery = useReviewMetrics();
 
-  // Trigger loading shimmer briefly on filter change.
-  useEffect(() => {
-    if (screenState === "error" || screenState === "empty") return;
-    setScreenState("loading");
-  }, [search, time, outcome]);
+  // Derive screen state: explicit override wins, otherwise driven by the query.
+  const screenState: ScreenState =
+    stateOverride !== "auto"
+      ? stateOverride
+      : callsQuery.isLoading
+      ? "loading"
+      : callsQuery.isError
+      ? "error"
+      : (callsQuery.data ?? []).length === 0
+      ? "empty"
+      : "normal";
 
   const rows = useMemo(() => {
-    return PREVIOUS_CALLS.filter((c) => {
+    const all = callsQuery.data ?? [];
+    return all.filter((c) => {
       if (outcome !== "All Outcomes" && c.outcome !== outcome) return false;
       if (search) {
         const q = search.toLowerCase();
         return (
-          c.contact.toLowerCase().includes(q) ||
+          c.contact_name.toLowerCase().includes(q) ||
           c.company.toLowerCase().includes(q) ||
-          c.outcome.toLowerCase().includes(q)
+          (c.outcome ?? "").toLowerCase().includes(q)
         );
       }
       return true;
     });
-  }, [search, time, outcome]);
+  }, [search, time, outcome, callsQuery.data]);
 
   const clearFilters = () => {
     setSearch("");
@@ -60,6 +70,9 @@ export default function PreviousCallsPage() {
     setOutcome("All Outcomes");
   };
   const isBrandNew = screenState === "empty";
+  const totalCount = callsQuery.data?.length ?? 0;
+  const metrics = metricsQuery.data;
+
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
@@ -70,16 +83,20 @@ export default function PreviousCallsPage() {
 
         <main className="flex-1 px-6 py-4 space-y-4">
           <div className="flex justify-end">
-            <StateControls value={screenState} onChange={setScreenState} />
+            <StateControls
+              value={stateOverride === "auto" ? "normal" : stateOverride}
+              onChange={(v) => setStateOverride(v as ScreenState)}
+            />
           </div>
           {/* Page header */}
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <div className="text-[22px] font-semibold leading-tight">Previous Calls</div>
               <div className="text-[12px] text-muted-foreground mt-0.5">
-                {PREVIOUS_CALLS.length} reviewed and synced calls.
+                {totalCount} reviewed and synced calls.
               </div>
             </div>
+
             <div className="flex-1 max-w-md relative">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -145,9 +162,10 @@ export default function PreviousCallsPage() {
                     </div>
                     <div className="mt-4 flex items-center justify-center gap-3">
                       <button
-                        onClick={() => setScreenState("loading")}
+                        onClick={() => { setStateOverride("auto"); callsQuery.refetch(); }}
                         className="h-8 px-4 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 flex items-center gap-1.5"
                       >
+
                         <RefreshCw className="w-3.5 h-3.5" /> Refresh
                       </button>
                       <button
@@ -237,30 +255,32 @@ export default function PreviousCallsPage() {
                       {rows.map((c) => (
                         <tr
                           key={c.id}
-                          onClick={() => navigate(`/calls/complete/${c.id}`)}
+                          onClick={() => navigate(`/calls/complete/${c.slug}`)}
                           className="hover:bg-secondary/40 cursor-pointer"
                         >
                           <td className="px-3 py-2.5">
-                            <span className="text-primary font-medium hover:underline">{c.contact}</span>
+                            <span className="text-primary font-medium hover:underline">{c.contact_name}</span>
                             <div className="text-[10px] text-muted-foreground">{c.title}</div>
                           </td>
                           <td className="px-3 py-2.5">{c.company}</td>
-                          <td className="px-3 py-2.5">{c.date}</td>
-                          <td className="px-3 py-2.5 num">{c.duration}</td>
+                          <td className="px-3 py-2.5">{formatCallDate(c.call_date)}</td>
+                          <td className="px-3 py-2.5 num">{formatDuration(c.duration_seconds)}</td>
                           <td className="px-3 py-2.5">
-                            <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border", OUTCOME_STYLES[c.outcome])}>
-                              {c.outcome}
-                            </span>
+                            {c.outcome && (
+                              <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border", OUTCOME_STYLES[c.outcome as Outcome])}>
+                                {c.outcome}
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2.5 num">
-                            <span className={cn(c.fieldsConfirmed === c.fieldsTotal && "text-success font-medium")}>
-                              {c.fieldsConfirmed}/{c.fieldsTotal}
+                            <span className={cn(c.fields_confirmed === c.fields_total && "text-success font-medium")}>
+                              {c.fields_confirmed}/{c.fields_total}
                             </span>
                           </td>
-                          <td className="px-3 py-2.5 text-muted-foreground">{c.syncedAt}</td>
+                          <td className="px-3 py-2.5 text-muted-foreground">{formatSyncedAt(c.synced_at)}</td>
                           <td className="px-3 py-2.5 text-right pr-3">
                             <button
-                              onClick={(e) => { e.stopPropagation(); navigate(`/calls/complete/${c.id}`); }}
+                              onClick={(e) => { e.stopPropagation(); navigate(`/calls/complete/${c.slug}`); }}
                               className="h-7 px-3 text-[11px] font-medium border border-primary text-primary rounded hover:bg-primary/5"
                             >
                               View
@@ -271,6 +291,7 @@ export default function PreviousCallsPage() {
                     </tbody>
                   </table>
                 )}
+
               </div>
             </div>
 
@@ -282,9 +303,10 @@ export default function PreviousCallsPage() {
                   <div className="text-[10px] text-muted-foreground">This month</div>
                 </div>
                 <div className="p-3 space-y-3">
-                  <StatRow I={Phone} label="Calls reviewed" value="47" tone="text-foreground" />
-                  <StatRow I={Clock} label="Time saved" value="18m" tone="text-success" sub="vs manual entry" />
-                  <StatRow I={Award} label="Confirmed without amendment" value="96%" tone="text-success" sub="trust signal" />
+                  <StatRow I={Phone} label="Calls reviewed" value={metrics ? String(metrics.calls_reviewed) : "—"} tone="text-foreground" />
+                  <StatRow I={Clock} label="Time saved" value={metrics ? `${Math.round(metrics.seconds_saved / 60)}m` : "—"} tone="text-success" sub="vs manual entry" />
+                  <StatRow I={Award} label="Confirmed without amendment" value={metrics ? `${Math.round(Number(metrics.pct_unedited))}%` : "—"} tone="text-success" sub="trust signal" />
+
                   <div className="bg-info border border-info-border rounded p-2 text-[11px] text-primary mt-2">
                     <div className="flex items-center gap-1.5 font-semibold">
                       <TrendingUp className="w-3 h-3" /> Top 5% on team
