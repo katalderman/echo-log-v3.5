@@ -239,7 +239,7 @@ export default function ActiveCallPage() {
                   onRetry={retryAll}
                   retrying={briefQuery.isRefetching || callQuery.isRefetching || sessionQuery.isRefetching}
                 />
-              ) : briefState === "loading" ? (
+              ) : briefState === "loading" ? (showBriefSkeleton ? (
                 <div className="bg-card border border-border rounded">
                   {[0, 1, 2].map((i) => (
                     <div key={i} className={cn("px-4 py-3", i < 2 && "border-b border-border")}>
