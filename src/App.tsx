@@ -51,6 +51,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <OfflineBanner />
         <AuthGate>
           <Routes>
             <Route path="/auth" element={<AuthPage />} />

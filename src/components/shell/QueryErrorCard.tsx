@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, RefreshCw, WifiOff } from "lucide-react";
+import { useOnlineStatus } from "@/lib/useOnlineStatus";
 
 interface Props {
   /** Short error title shown in the destructive heading. */
@@ -35,6 +36,7 @@ export function QueryErrorCard({
   compact = false,
 }: Props) {
   const [showDetails, setShowDetails] = useState(false);
+  const online = useOnlineStatus();
   const errorRequestId =
     error && typeof error === "object" && "requestId" in error
       ? String((error as { requestId?: unknown }).requestId ?? "")
@@ -49,6 +51,14 @@ export function QueryErrorCard({
       ? JSON.stringify(error)
       : "No additional detail.";
 
+  // Offline takes precedence: most "errors" while offline are just network drops.
+  const effectiveTitle = !online ? "You're offline" : title;
+  const effectiveMessage = !online
+    ? "Pulse will reload this view automatically when your connection is restored."
+    : message;
+  const Icon = !online ? WifiOff : AlertCircle;
+  const retryDisabled = retrying || !online;
+
   return (
     <div
       className={
@@ -57,19 +67,20 @@ export function QueryErrorCard({
       }
       role="alert"
     >
-      <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-3" />
-      <div className="text-[14px] font-semibold text-destructive">{title}</div>
+      <Icon className="w-8 h-8 text-destructive mx-auto mb-3" />
+      <div className="text-[14px] font-semibold text-destructive">{effectiveTitle}</div>
       <div className="text-[12px] text-muted-foreground mt-1 max-w-md mx-auto">
-        {message}
+        {effectiveMessage}
       </div>
       <div className="mt-4 flex items-center justify-center gap-3">
         <button
           onClick={onRetry}
-          disabled={retrying}
+          disabled={retryDisabled}
+          title={!online ? "Waiting for your connection" : undefined}
           className="h-8 px-4 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1.5"
         >
           <RefreshCw className={"w-3.5 h-3.5 " + (retrying ? "animate-spin" : "")} />
-          {retrying ? "Retrying…" : "Retry"}
+          {!online ? "Waiting for connection" : retrying ? "Retrying…" : "Retry"}
         </button>
         <button
           onClick={() => setShowDetails((v) => !v)}
