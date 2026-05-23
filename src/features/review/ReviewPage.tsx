@@ -131,6 +131,8 @@ export default function ReviewPage() {
               <PipelineReviewPreview synced={r.synced} />
             </div>
           </div>
+            </>
+          )}
         </main>
 
         <TodoFooter />
