@@ -408,6 +408,8 @@ export default function SyncedPage() {
                   </div>
                 </div>
               ) : (
+                <div className="min-h-[200px]" aria-busy="true" aria-label="Pushing to pipeline" />
+              )) : (
                 <div className="bg-card border border-border rounded text-[12px]">
                   <div className="px-3 py-2 border-b border-border">
                     <div className="flex items-center justify-between gap-2">
