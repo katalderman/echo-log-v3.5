@@ -250,7 +250,9 @@ export default function ActiveCallPage() {
                     </div>
                   ))}
                 </div>
-              ) : briefState === "empty" ? (
+              ) : (
+                <div className="min-h-[180px]" aria-busy="true" aria-label="Loading brief" />
+              )) : briefState === "empty" ? (
                 <div className="bg-card border border-border rounded px-6 py-10 text-center">
                   <div className="w-10 h-10 rounded-full bg-info border border-info-border grid place-items-center mx-auto mb-3">
                     <Lightbulb className="w-5 h-5 text-primary" />
@@ -319,9 +321,13 @@ export default function ActiveCallPage() {
                   <div className="text-[10px] text-muted-foreground">Your pre-call notes, ready to glance.</div>
                 </div>
                 {briefState === "loading" ? (
-                  <div className="p-3 space-y-2">
-                    {[0, 1, 2].map((i) => <Skeleton key={i} className="h-3 w-full" />)}
-                  </div>
+                  showBriefSkeleton ? (
+                    <div className="p-3 space-y-2">
+                      {[0, 1, 2].map((i) => <Skeleton key={i} className="h-3 w-full" />)}
+                    </div>
+                  ) : (
+                    <div className="min-h-[72px]" aria-busy="true" />
+                  )
                 ) : talkingPoints.length === 0 ? (
                   <div className="p-3 text-[11px] text-muted-foreground">No talking points for this call yet.</div>
                 ) : (
