@@ -7,6 +7,7 @@ import {
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
 import { StateControls, Skeleton, ScreenState } from "@/components/shell/StateControls";
 import { QueryErrorCard } from "@/components/shell/QueryErrorCard";
+import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { cn } from "@/lib/utils";
 import { useCall, useCallBrief, useCallSession } from "@/lib/queries";
 
@@ -59,6 +60,9 @@ export default function ActiveCallPage() {
   const brief = briefQuery.data;
   const dbError = briefState === "error";
   const zoomDropped = session?.status === "dropped";
+  // Suppress skeleton flash for <600ms loads; manual override still renders immediately.
+  const delayedBriefLoading = useDelayedFlag(briefState === "loading" && stateOverride === "auto");
+  const showBriefSkeleton = stateOverride === "loading" || delayedBriefLoading;
 
   const retryAll = () => {
     setStateOverride("auto");
@@ -235,7 +239,7 @@ export default function ActiveCallPage() {
                   onRetry={retryAll}
                   retrying={briefQuery.isRefetching || callQuery.isRefetching || sessionQuery.isRefetching}
                 />
-              ) : briefState === "loading" ? (
+              ) : briefState === "loading" ? (showBriefSkeleton ? (
                 <div className="bg-card border border-border rounded">
                   {[0, 1, 2].map((i) => (
                     <div key={i} className={cn("px-4 py-3", i < 2 && "border-b border-border")}>
@@ -246,7 +250,9 @@ export default function ActiveCallPage() {
                     </div>
                   ))}
                 </div>
-              ) : briefState === "empty" ? (
+              ) : (
+                <div className="min-h-[180px]" aria-busy="true" aria-label="Loading brief" />
+              )) : briefState === "empty" ? (
                 <div className="bg-card border border-border rounded px-6 py-10 text-center">
                   <div className="w-10 h-10 rounded-full bg-info border border-info-border grid place-items-center mx-auto mb-3">
                     <Lightbulb className="w-5 h-5 text-primary" />
@@ -315,9 +321,13 @@ export default function ActiveCallPage() {
                   <div className="text-[10px] text-muted-foreground">Your pre-call notes, ready to glance.</div>
                 </div>
                 {briefState === "loading" ? (
-                  <div className="p-3 space-y-2">
-                    {[0, 1, 2].map((i) => <Skeleton key={i} className="h-3 w-full" />)}
-                  </div>
+                  showBriefSkeleton ? (
+                    <div className="p-3 space-y-2">
+                      {[0, 1, 2].map((i) => <Skeleton key={i} className="h-3 w-full" />)}
+                    </div>
+                  ) : (
+                    <div className="min-h-[72px]" aria-busy="true" />
+                  )
                 ) : talkingPoints.length === 0 ? (
                   <div className="p-3 text-[11px] text-muted-foreground">No talking points for this call yet.</div>
                 ) : (

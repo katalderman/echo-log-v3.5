@@ -7,6 +7,7 @@ import {
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
 import { StateControls, Skeleton, ScreenState } from "@/components/shell/StateControls";
 import { QueryErrorCard } from "@/components/shell/QueryErrorCard";
+import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { cn } from "@/lib/utils";
 import { useSyncedPayload } from "./useSyncedPayload";
 import { formatSyncedAt, useCallsQueue, formatDuration, formatCallDate } from "@/lib/queries";
@@ -41,6 +42,8 @@ export default function SyncedPage() {
   // History mode = the underlying call row is already synced.
   const { drafts, syncedPayload, call, isLoading: syncedIsLoading, isError: syncedIsError, error: syncedError, isRefetching: syncedRefetching, refetch: refetchSynced } = useSyncedPayload({ slug: id, isHistory: false });
   const noFieldsYet = !syncedIsError && !syncedIsLoading && !!call && syncedPayload === null;
+  // Suppress pipeline-push skeleton flash for sub-600ms loads.
+  const showPipelineSkeleton = useDelayedFlag(pipelineState === "loading");
   const isHistory = call?.status === "synced" && id !== "maya-chen";
   const contact = call?.contact_name ?? "Maya Chen";
   const company = call?.company ?? "Northwind Robotics";
@@ -384,7 +387,7 @@ export default function SyncedPage() {
 
             {/* Right: Pipeline preview */}
             <div className="col-span-3 space-y-4">
-              {pipelineState === "loading" && !isHistory ? (
+              {pipelineState === "loading" && !isHistory ? (showPipelineSkeleton ? (
                 <div className="bg-card border border-border rounded text-[12px]">
                   <div className="px-3 py-2 border-b border-border">
                     <div className="text-[13px] font-semibold flex items-center gap-1.5">
@@ -405,6 +408,8 @@ export default function SyncedPage() {
                   </div>
                 </div>
               ) : (
+                <div className="min-h-[200px]" aria-busy="true" aria-label="Pushing to pipeline" />
+              )) : (
                 <div className="bg-card border border-border rounded text-[12px]">
                   <div className="px-3 py-2 border-b border-border">
                     <div className="flex items-center justify-between gap-2">
