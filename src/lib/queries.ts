@@ -13,6 +13,14 @@ export type CallBriefRow = Database["public"]["Tables"]["call_briefs"]["Row"];
 export type CallSessionRow = Database["public"]["Tables"]["call_sessions"]["Row"];
 export type CallTimelineItemRow = Database["public"]["Tables"]["call_timeline_items"]["Row"];
 export type ReviewMetricsRow = Database["public"]["Tables"]["review_metrics"]["Row"];
+export type MeetingIntegrationRow = Database["public"]["Tables"]["meeting_integrations"]["Row"];
+export type MeetingProvider = Database["public"]["Enums"]["meeting_provider"];
+
+/**
+ * Placeholder owner used by all seed rows and prototype mutations.
+ * Replaced by `auth.uid()` when authentication lands.
+ */
+export const PROTOTYPE_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 /* ------------------------------------------------------------------ */
 /* Formatters — convert DB shapes into the display strings the UI uses */
