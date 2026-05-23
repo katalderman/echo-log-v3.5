@@ -223,7 +223,24 @@ export default function SyncedPage() {
                   retrying={syncedRefetching}
                 />
               )}
-              {!syncedIsError && (<>
+              {!syncedIsError && noFieldsYet && (
+                <div className="bg-card border border-border rounded px-6 py-16 text-center">
+                  <div className="w-12 h-12 rounded-full bg-warning/10 border border-warning/40 grid place-items-center mx-auto mb-3">
+                    <Sparkles className="w-6 h-6 text-warning" />
+                  </div>
+                  <div className="text-[16px] font-semibold">This call hasn't been drafted yet</div>
+                  <div className="text-[12px] text-muted-foreground mt-1 max-w-md mx-auto">
+                    Pulse hasn't generated CRM fields for this call. Run draft again to ingest the transcript and produce a 7-field draft.
+                  </div>
+                  <button
+                    onClick={() => refetchSynced()}
+                    className="mt-4 h-9 px-4 text-[12px] font-semibold bg-primary text-primary-foreground rounded hover:bg-primary/90 inline-flex items-center gap-1.5"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> Run draft again
+                  </button>
+                </div>
+              )}
+              {!syncedIsError && !noFieldsYet && (<>
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-[13px] font-semibold flex items-center gap-2">
