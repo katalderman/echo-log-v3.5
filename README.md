@@ -299,3 +299,12 @@ cite it back to this section.
   skeleton treatment. Manual `StateControls` "loading" override bypasses the
   delay so the demo state is always inspectable. See
   `src/lib/useDelayedFlag.ts`.
+- **DB write failures** — every TanStack Query mutation in the app
+  (`useUpdateCallField`, `useSaveDraft`, `useSyncCall`, `useToggleIntegration`)
+  flows through a global `MutationCache.onError` in `src/App.tsx`. On
+  failure the user sees a sonner toast — "Couldn't save your changes" +
+  the error message + a **Retry** action that re-runs the exact failed
+  mutation with its original variables via `mutation.execute(variables)`.
+  Auth-shaped errors (401, JWT expired) are diverted to the same
+  `AUTH_EXPIRED_EVENT` redirect as reads, so writes never silently drop
+  the user into a stale session. No mutation in Pulse fails silently.
