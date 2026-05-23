@@ -8,6 +8,8 @@ import ActiveCallPage from "@/features/active-call/ActiveCallPage";
 import SyncedPage from "@/features/synced/SyncedPage";
 import PreviousCallsPage from "@/features/history/PreviousCallsPage";
 import NotFoundPage from "@/features/not-found/NotFoundPage";
+import AuthPage from "@/features/auth/AuthPage";
+import AuthGate from "@/features/auth/AuthGate";
 
 const queryClient = new QueryClient();
 
@@ -17,14 +19,17 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<ReviewPage />} />
-          <Route path="/calls/active" element={<ActiveCallPage />} />
-          <Route path="/calls/complete/:id" element={<SyncedPage />} />
-          <Route path="/calls/history" element={<PreviousCallsPage />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+        <AuthGate>
+          <Routes>
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/" element={<ReviewPage />} />
+            <Route path="/calls/active" element={<ActiveCallPage />} />
+            <Route path="/calls/complete/:id" element={<SyncedPage />} />
+            <Route path="/calls/history" element={<PreviousCallsPage />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </AuthGate>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
