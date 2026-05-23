@@ -115,16 +115,28 @@ export function ImportModal({ onClose }: Props) {
               )}
               {tab === "connect" && (
                 <div className="grid grid-cols-3 gap-2">
-                  {sources.map((s) => (
-                    <div key={s.name} className="border border-border rounded p-3 text-center">
-                      <div className="text-[12px] font-medium mb-2">{s.name}</div>
-                      {s.connected ? (
-                        <div className="text-[11px] text-success flex items-center justify-center gap-1"><Check className="w-3 h-3" /> Connected</div>
-                      ) : (
-                        <button className="h-7 px-2 text-[11px] border border-primary text-primary rounded hover:bg-primary/5">Connect</button>
-                      )}
-                    </div>
-                  ))}
+                  {PROVIDERS.map((p) => {
+                    const connected = isConnected(p.key);
+                    const pending = toggle.isPending && toggle.variables?.provider === p.key;
+                    return (
+                      <div key={p.key} className="border border-border rounded p-3 text-center">
+                        <div className="text-[12px] font-medium mb-2">{p.label}</div>
+                        {connected ? (
+                          <div className="text-[11px] text-success flex items-center justify-center gap-1">
+                            <Check className="w-3 h-3" /> Connected
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleConnect(p.key, p.label)}
+                            disabled={pending || integrations.isLoading}
+                            className="h-7 px-2 text-[11px] border border-primary text-primary rounded hover:bg-primary/5 disabled:opacity-50 inline-flex items-center gap-1"
+                          >
+                            {pending && <Loader2 className="w-3 h-3 animate-spin" />} Connect
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
