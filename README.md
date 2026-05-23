@@ -150,22 +150,47 @@ Routes worth visiting:
 
 ---
 
-## Next steps
+## Auth & access control
 
-### Add authentication & lock down the database
+### Roles
 
-Tables are in place (`calls`, `call_fields`, `profiles`, `contacts`,
-`call_briefs`, `call_timeline_items`, `call_sessions`, `review_metrics`,
-`meeting_integrations`), but **row-level security is currently open** —
-anyone with the anon key can read or write any row. This is intentional
-for the prototype; it is **not safe for production**.
+Three roles, stored in `public.user_roles` (enum `app_role`):
 
-Before shipping:
+| Role        | Who                  | Scope                                                                 |
+| ----------- | -------------------- | --------------------------------------------------------------------- |
+| **rep**     | Default for signups  | CRUD only their own calls, fields, briefs, sessions, timeline, etc.   |
+| **manager** | Sales managers       | All rep rights + read everyone on their `profiles.team_id`            |
+| **admin**   | Workspace owner      | Full read/write across every table, including `user_roles`            |
 
-1. Add authentication (email/password + Google sign-in is the default).
-2. Replace the open RLS policies with policies scoped to
-   `owner_id = auth.uid()` (and equivalent joins for child tables).
-3. Set `owner_id` on insert from the authenticated user.
+Role checks go through a security-definer helper, `public.has_role(uuid, app_role)`.
+RLS policies on every table reference it; reps never query `user_roles` directly.
+
+### Row-Level Security
+
+The prototype's open "anyone can ..." policies are gone. Every application
+table is now scoped to the authenticated user:
+
+- **`calls`** — owner, team manager (via `profiles.team_id`), or admin
+- **`call_fields` / `call_briefs` / `call_sessions` / `call_timeline_items`** —
+  inherit visibility through the parent call
+- **`contacts`** / **`meeting_integrations`** — owner or admin only
+- **`review_metrics`** — self, manager, or admin
+- **`profiles`** — readable by any signed-in user; only self can update
+- **`user_roles`** — self-read; only admins can grant/revoke
+
+### Signup trigger
+
+`handle_new_user()` fires after every `auth.users` insert and:
+1. Creates a `profiles` row with `display_name` (from metadata or email local-part)
+   and computed `initials`.
+2. Inserts `('user_id', 'rep')` into `user_roles`.
+
+### Remaining work (next commits)
+
+1. **Commit 2** — `/auth` route (email+password + Google), `<AuthGate>` wrapper.
+2. **Commit 3** — TopBar profile + sign-out, `owner_id = auth.uid()` on all writes.
+3. **Commit 4** — Two-account RLS verification.
+
 
 
 ---
