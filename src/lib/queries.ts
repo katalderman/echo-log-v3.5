@@ -295,3 +295,47 @@ export function useSyncCall() {
     },
   });
 }
+
+/* ------------------------------------------------------------------ */
+/* Meeting integrations (Import modal)                                 */
+/* ------------------------------------------------------------------ */
+
+/** All meeting integrations for the current (placeholder) user. */
+export function useMeetingIntegrations() {
+  return useQuery({
+    queryKey: ["meeting_integrations"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("meeting_integrations")
+        .select("*")
+        .eq("user_id", PROTOTYPE_USER_ID);
+      if (error) throw error;
+      return data as MeetingIntegrationRow[];
+    },
+  });
+}
+
+/** Connect / disconnect a single provider. Upserts on (user_id, provider). */
+export function useToggleIntegration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { provider: MeetingProvider; connect: boolean }) => {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("meeting_integrations")
+        .upsert(
+          {
+            user_id: PROTOTYPE_USER_ID,
+            provider: input.provider,
+            status: input.connect ? "connected" : "disconnected",
+            connected_at: input.connect ? now : null,
+          },
+          { onConflict: "user_id,provider" },
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["meeting_integrations"] });
+    },
+  });
+}
