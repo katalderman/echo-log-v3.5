@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Phone, Mail, Filter, Check, TrendingUp, Clock, Award, AlertCircle, RefreshCw, Inbox } from "lucide-react";
+import { Search, Phone, Mail, Filter, Check, TrendingUp, Clock, Award, Inbox } from "lucide-react";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
 import { StateControls, Skeleton, ScreenState } from "@/components/shell/StateControls";
+import { QueryErrorCard } from "@/components/shell/QueryErrorCard";
 import { cn } from "@/lib/utils";
 import {
   Outcome,
