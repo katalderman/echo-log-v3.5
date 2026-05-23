@@ -7,9 +7,8 @@ import {
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
 import { StateControls, Skeleton, ScreenState } from "@/components/shell/StateControls";
 import { cn } from "@/lib/utils";
-import { CONFIRMED_FIELDS, REVIEW_QUEUE } from "@/data/calls";
 import { useSyncedPayload } from "./useSyncedPayload";
-import { formatSyncedAt } from "@/lib/queries";
+import { formatSyncedAt, useCallsQueue, formatDuration, formatCallDate } from "@/lib/queries";
 
 const STEPS = ["Call Ended", "AI Drafted", "Ready for Review", "Fields Confirmed", "Synced to Salesforce"];
 
@@ -44,13 +43,26 @@ export default function SyncedPage() {
   const contact = call?.contact_name ?? "Maya Chen";
   const company = call?.company ?? "Northwind Robotics";
 
-  const queueRest = REVIEW_QUEUE.filter((c) => c.id !== "maya-chen").slice(0, 3);
+  const queueQuery = useCallsQueue();
+  const queueRest = (queueQuery.data ?? [])
+    .filter((c) => c.slug !== "maya-chen")
+    .slice(0, 3)
+    .map((c) => ({
+      id: c.slug ?? c.id,
+      contact: c.contact_name,
+      company: c.company,
+      duration: formatDuration(c.duration_seconds),
+      date: formatCallDate(c.call_date),
+    }));
   const nextCall = queueRest[0];
 
-  // Use what was actually synced when available; otherwise fall back to the canned data.
-  const displayedFields = syncedPayload?.syncedFields?.length
-    ? syncedPayload.syncedFields.map((f) => ({ label: f.label, value: f.value, source: f.source, edited: f.edited }))
-    : CONFIRMED_FIELDS.map((f) => ({ ...f, edited: false }));
+  // Use what was actually synced when available; otherwise render an empty list.
+  const displayedFields = (syncedPayload?.syncedFields ?? []).map((f) => ({
+    label: f.label,
+    value: f.value,
+    source: f.source,
+    edited: f.edited,
+  }));
   const skippedFields = syncedPayload?.skippedFields ?? [];
   const displayedSummary = syncedPayload?.summary ?? call?.summary ?? undefined;
   const fieldCount = displayedFields.length;
