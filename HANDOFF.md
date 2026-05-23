@@ -279,6 +279,14 @@ There is **no backend, no auth, no network layer** in this codebase. Every
 
 ---
 
+## Known gaps
+
+| Gap | Impact | Where to fix |
+|---|---|---|
+| Sync to Salesforce hangs when syncing data | Sync modal can stall; no timeout recovery or user-facing error state in the UI mock | Replace `useReviewState.doSync` timeout with real Salesforce REST call + robust error + retry handling |
+
+---
+
 ## Gotchas
 
 - **No `Date` objects.** Dates are formatted strings in mock data. When you
