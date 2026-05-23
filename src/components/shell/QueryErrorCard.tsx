@@ -35,12 +35,11 @@ export function QueryErrorCard({
   compact = false,
 }: Props) {
   const [showDetails, setShowDetails] = useState(false);
-  const resolvedRequestId =
-    requestId ??
-    (error && typeof error === "object" && "requestId" in error
+  const errorRequestId =
+    error && typeof error === "object" && "requestId" in error
       ? String((error as { requestId?: unknown }).requestId ?? "")
-      : "") ||
-    fallbackRequestId();
+      : "";
+  const resolvedRequestId = requestId || errorRequestId || fallbackRequestId();
   const detail =
     error instanceof Error
       ? error.message
