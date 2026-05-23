@@ -7,6 +7,7 @@ import {
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
 import { StateControls, Skeleton, ScreenState } from "@/components/shell/StateControls";
 import { QueryErrorCard } from "@/components/shell/QueryErrorCard";
+import { useDelayedFlag } from "@/lib/useDelayedFlag";
 import { cn } from "@/lib/utils";
 import { useCall, useCallBrief, useCallSession } from "@/lib/queries";
 
@@ -59,6 +60,9 @@ export default function ActiveCallPage() {
   const brief = briefQuery.data;
   const dbError = briefState === "error";
   const zoomDropped = session?.status === "dropped";
+  // Suppress skeleton flash for <600ms loads; manual override still renders immediately.
+  const delayedBriefLoading = useDelayedFlag(briefState === "loading" && stateOverride === "auto");
+  const showBriefSkeleton = stateOverride === "loading" || delayedBriefLoading;
 
   const retryAll = () => {
     setStateOverride("auto");
