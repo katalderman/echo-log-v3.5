@@ -3,7 +3,7 @@ import {
   Phone, Search, ChevronRight, ChevronDown, X, Check, Pencil, Video, FileText, Upload, Link2,
   Mic, Square, Bold, Italic, Strikethrough, List, ListOrdered, AtSign,
   CheckCircle2, RefreshCw, Filter, Mail, ClipboardList,
-  StickyNote, Quote, Eye, Plus, Plug,
+  StickyNote, Eye, Plus, Plug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
