@@ -6,23 +6,80 @@ import {
   FieldKey,
   SEED_FIELDS,
   SEED_SUMMARY,
-  STORAGE_KEYS,
   SyncRow,
-  DraftRecord,
 } from "./data";
+import {
+  useCall,
+  useCallFields,
+  useSaveDraft,
+  useSyncCall,
+  useUpdateCallField,
+  type CallFieldRow,
+} from "@/lib/queries";
 
 /**
  * useReviewState — owns all state and side effects for the Review & Confirm screen.
  *
- * Splitting this out keeps `ReviewPage.tsx` purely presentational: components
- * receive props and call handlers, but never reach into localStorage or
- * coordinate timers themselves.
+ * Reads from Supabase (calls + call_fields) and persists every confirm/skip/edit
+ * back through mutation hooks. Local React state mirrors the remote rows so
+ * interactions stay instant; mutations fire optimistically.
  */
+const ACTIVE_SLUG = "maya-chen";
+
+function rowToField(r: CallFieldRow): Field {
+  return {
+    key: r.field_key as FieldKey,
+    label: r.label,
+    value: r.value,
+    confidence: r.confidence,
+    confirmed: r.confirmed,
+    skipped: r.skipped,
+    source: {
+      speaker: r.source_speaker ?? "",
+      ts: r.source_ts ?? "",
+      quote: r.source_quote ?? "",
+    },
+  };
+}
+
 export function useReviewState() {
   const navigate = useNavigate();
 
+  const callQuery = useCall(ACTIVE_SLUG);
+  const callId = callQuery.data?.id;
+  const fieldsQuery = useCallFields(callId);
+  const updateField = useUpdateCallField(callId);
+  const saveDraftMutation = useSaveDraft();
+  const syncCallMutation = useSyncCall();
+
+  // Local mirror — seeded from Supabase, edited optimistically.
   const [fields, setFields] = useState<Field[]>(SEED_FIELDS);
   const [summary, setSummary] = useState(SEED_SUMMARY);
+  const hydratedFields = useRef(false);
+  const hydratedSummary = useRef(false);
+
+  useEffect(() => {
+    if (hydratedFields.current) return;
+    const rows = fieldsQuery.data;
+    if (rows && rows.length) {
+      setFields(rows.map(rowToField));
+      hydratedFields.current = true;
+    }
+  }, [fieldsQuery.data]);
+
+  useEffect(() => {
+    if (hydratedSummary.current) return;
+    const s = callQuery.data?.summary;
+    if (s) {
+      setSummary(s);
+      hydratedSummary.current = true;
+    }
+  }, [callQuery.data?.summary]);
+
+  // Map field key → DB row id, for mutation lookups.
+  const idForKey = (k: FieldKey): string | undefined =>
+    fieldsQuery.data?.find((r) => r.field_key === k)?.id;
+
   const [editingSummary, setEditingSummary] = useState(false);
   const [summaryReviewed, setSummaryReviewed] = useState(false);
   const [expandedSources, setExpandedSources] = useState<Set<FieldKey>>(new Set());
@@ -57,31 +114,43 @@ export function useReviewState() {
     return () => clearInterval(t);
   }, [synced]);
 
-  const toggleConfirm = (k: FieldKey) =>
-    setFields((arr) =>
-      arr.map((f) => (f.key === k ? { ...f, confirmed: !f.confirmed, skipped: false } : f)),
-    );
+  const toggleConfirm = (k: FieldKey) => {
+    const target = fields.find((f) => f.key === k);
+    if (!target) return;
+    const next = { confirmed: !target.confirmed, skipped: false };
+    setFields((arr) => arr.map((f) => (f.key === k ? { ...f, ...next } : f)));
+    const id = idForKey(k);
+    if (id) updateField.mutate({ id, ...next });
+  };
 
-  const toggleSkip = (k: FieldKey) =>
+  const toggleSkip = (k: FieldKey) => {
+    const target = fields.find((f) => f.key === k);
+    if (!target) return;
+    const next = !target.skipped;
+    if (next) {
+      toast(`"${target.label}" skipped`, {
+        description: "This field will not be synced to Salesforce.",
+      });
+    }
     setFields((arr) =>
-      arr.map((f) => {
-        if (f.key !== k) return f;
-        const next = !f.skipped;
-        if (next) {
-          toast(`"${f.label}" skipped`, {
-            description: "This field will not be synced to Salesforce.",
-          });
-        }
-        return { ...f, skipped: next, confirmed: next ? false : f.confirmed };
-      }),
+      arr.map((f) =>
+        f.key === k ? { ...f, skipped: next, confirmed: next ? false : f.confirmed } : f,
+      ),
     );
+    const id = idForKey(k);
+    if (id) updateField.mutate({ id, skipped: next, confirmed: next ? false : target.confirmed });
+  };
 
   const confirmAll = () => {
     setSummaryReviewed(true);
-    const willConfirm = fields.filter((f) => !f.skipped && !f.confirmed).length;
+    const targets = fields.filter((f) => !f.skipped && !f.confirmed);
     setFields((arr) => arr.map((f) => (f.skipped ? f : { ...f, confirmed: true })));
     setPathStep(3);
-    toast.success(`${willConfirm} field${willConfirm === 1 ? "" : "s"} confirmed`);
+    for (const t of targets) {
+      const id = idForKey(t.key);
+      if (id) updateField.mutate({ id, confirmed: true });
+    }
+    toast.success(`${targets.length} field${targets.length === 1 ? "" : "s"} confirmed`);
   };
 
   const toggleSource = (k: FieldKey) =>
@@ -116,15 +185,26 @@ export function useReviewState() {
 
   const applyVoice = () => {
     if (!voiceDiff) return;
+    const updates: { key: FieldKey; value: string }[] = [];
     setFields((arr) =>
       arr.map((f) => {
-        if (f.key === "next")
-          return { ...f, value: f.value + " + healthcare reference customer", confirmed: false };
-        if (f.key === "objections")
-          return { ...f, value: f.value + " + needs healthcare proof point", confirmed: false };
+        if (f.key === "next") {
+          const value = f.value + " + healthcare reference customer";
+          updates.push({ key: "next", value });
+          return { ...f, value, confirmed: false };
+        }
+        if (f.key === "objections") {
+          const value = f.value + " + needs healthcare proof point";
+          updates.push({ key: "objections", value });
+          return { ...f, value, confirmed: false };
+        }
         return f;
       }),
     );
+    for (const u of updates) {
+      const id = idForKey(u.key);
+      if (id) updateField.mutate({ id, value: u.value, edited: true, confirmed: false });
+    }
     setVoiceDiff(null);
     toast.success("Amendment applied to 2 fields");
   };
@@ -136,70 +216,54 @@ export function useReviewState() {
 
   // --- Persistence -------------------------------------------------------
   const saveDraft = () => {
-    try {
-      const draft: DraftRecord = {
-        id: "maya-chen",
-        contact: "Maya Chen",
-        company: "Northwind Robotics",
-        duration: "24m 18s",
-        date: "Apr 28, 2026",
-        fieldsConfirmed: confirmedCount,
-        fieldsTotal: 7,
-        savedAt: new Date().toISOString(),
-      };
-      const existing: DraftRecord[] = JSON.parse(
-        localStorage.getItem(STORAGE_KEYS.drafts) || "[]",
-      );
-      const next = [draft, ...existing.filter((d) => d.id !== draft.id)];
-      localStorage.setItem(STORAGE_KEYS.drafts, JSON.stringify(next));
-    } catch {
-      /* localStorage may be unavailable in private mode — no-op */
-    }
-    toast.success("Draft saved", {
-      description: "Pick up where you left off from your queue.",
-    });
-    navigate("/calls/complete/maya-chen");
+    if (!callId) return;
+    saveDraftMutation.mutate(
+      { callId, fieldsConfirmed: confirmedCount, fieldsSkipped: skippedCount },
+      {
+        onSuccess: () => {
+          toast.success("Draft saved", {
+            description: "Pick up where you left off from your queue.",
+          });
+          navigate(`/calls/complete/${ACTIVE_SLUG}`);
+        },
+        onError: () => toast.error("Couldn't save draft — please try again."),
+      },
+    );
   };
 
   /**
-   * Persist exactly what we just synced so the Synced screen can render
-   * reality (edits, skips) instead of a canned snapshot.
+   * Persist exactly what we just synced. Each row carries its DB id so the
+   * mutation hook can update value/edited/confirmed in one shot.
    */
   const doSync = (syncedRows: SyncRow[]) => {
-    try {
-      const syncedFields = syncedRows.map((r) => {
-        const src = fields.find((f) => f.key === r.key)?.source;
-        return {
-          ...r,
-          source: src ? `${src.speaker} at ${src.ts}` : "",
-        };
-      });
-      const skippedFields = fields
-        .filter((f) => f.skipped)
-        .map((f) => ({ key: f.key, label: f.label, value: f.value }));
-      localStorage.setItem(
-        STORAGE_KEYS.syncedMaya,
-        JSON.stringify({
-          summary,
-          syncedFields,
-          skippedFields,
-          syncedAt: new Date().toISOString(),
-        }),
-      );
-      // Clear any saved draft now that the call has been synced.
-      const drafts = JSON.parse(localStorage.getItem(STORAGE_KEYS.drafts) || "[]");
-      localStorage.setItem(
-        STORAGE_KEYS.drafts,
-        JSON.stringify(drafts.filter((d: DraftRecord) => d.id !== "maya-chen")),
-      );
-    } catch {
-      /* no-op */
-    }
-    setPathStep(4);
-    setSynced(true);
-    setSyncedAgo(0);
-    setShowSync(false);
-    navigate("/calls/complete/maya-chen");
+    if (!callId) return;
+    const fieldRows = fieldsQuery.data ?? [];
+    const rows = syncedRows
+      .map((r) => {
+        const dbRow = fieldRows.find((x) => x.field_key === r.key);
+        return dbRow ? { id: dbRow.id, value: r.value, edited: r.edited } : null;
+      })
+      .filter((x): x is { id: string; value: string; edited: boolean } => x !== null);
+
+    syncCallMutation.mutate(
+      {
+        callId,
+        summary,
+        rows,
+        fieldsConfirmed: syncedRows.length,
+        fieldsSkipped: skippedCount,
+      },
+      {
+        onSuccess: () => {
+          setPathStep(4);
+          setSynced(true);
+          setSyncedAgo(0);
+          setShowSync(false);
+          navigate(`/calls/complete/${ACTIVE_SLUG}`);
+        },
+        onError: () => toast.error("Sync failed — please try again."),
+      },
+    );
   };
 
   return {
