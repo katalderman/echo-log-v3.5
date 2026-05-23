@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { Session } from "@supabase/supabase-js";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { AUTH_EXPIRED_EVENT } from "@/lib/authEvents";
 
 interface Props {
   children: React.ReactNode;
@@ -13,16 +15,45 @@ export default function AuthGate({ children }: Props) {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
 
+  // Subscribe to auth state changes. Also handles SIGNED_OUT and token
+  // refresh failures by redirecting to /auth with a toast.
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+    let hadSession = false;
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
+      if (event === "SIGNED_OUT" && hadSession) {
+        toast("Your session expired — please sign in again.");
+        navigate("/auth", { replace: true });
+      }
+      if (event === "TOKEN_REFRESHED" && !s) {
+        toast("Your session expired — please sign in again.");
+        navigate("/auth", { replace: true });
+      }
+      hadSession = !!s;
     });
+
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
+      hadSession = !!data.session;
       setReady(true);
     });
+
     return () => sub.subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
+
+  // React Query / fetch wrappers dispatch this event when they see a 401.
+  useEffect(() => {
+    const handler = () => {
+      toast("Your session expired — please sign in again.");
+      supabase.auth.signOut().catch(() => {
+        /* swallow — we're redirecting anyway */
+      });
+      navigate("/auth", { replace: true });
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, handler);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handler);
+  }, [navigate]);
 
   useEffect(() => {
     if (!ready) return;
