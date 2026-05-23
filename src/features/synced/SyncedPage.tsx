@@ -361,6 +361,7 @@ export default function SyncedPage() {
                   </div>
                 </div>
               )}
+              </>)}
             </div>
 
             {/* Right: Pipeline preview */}
