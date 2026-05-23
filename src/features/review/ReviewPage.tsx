@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
+import { QueryErrorCard } from "@/components/shell/QueryErrorCard";
 import { Field, FieldKey, TIMELINE_GROUPS } from "./data";
 import { useReviewState } from "./useReviewState";
 import { SyncModal } from "./components/SyncModal";
