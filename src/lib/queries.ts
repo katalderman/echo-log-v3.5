@@ -3,7 +3,7 @@
  * Replaces the hardcoded seed exports in src/data/calls.ts and
  * src/features/review/data.ts. Write paths are migrated in a later commit.
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -180,6 +180,110 @@ export function useReviewMetrics() {
         .maybeSingle();
       if (error) throw error;
       return data as ReviewMetricsRow | null;
+    },
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Mutations — Review write path                                       */
+/* ------------------------------------------------------------------ */
+
+/** Drafts in the team-queue nudge (status = drafted or draft_saved). */
+export function useDraftCalls() {
+  return useQuery({
+    queryKey: ["calls", "drafts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("calls")
+        .select("*")
+        .in("status", ["drafted", "draft_saved"])
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return data as CallRow[];
+    },
+  });
+}
+
+/** Persist a single call_fields row edit (confirmed / skipped / value). */
+export function useUpdateCallField(callId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (patch: {
+      id: string;
+      confirmed?: boolean;
+      skipped?: boolean;
+      value?: string;
+      edited?: boolean;
+    }) => {
+      const { id, ...rest } = patch;
+      const { error } = await supabase.from("call_fields").update(rest).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      if (callId) qc.invalidateQueries({ queryKey: ["call_fields", callId] });
+    },
+  });
+}
+
+/** "Save as draft" — mark the call as draft_saved and bump confirmed counts. */
+export function useSaveDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      callId: string;
+      fieldsConfirmed: number;
+      fieldsSkipped: number;
+    }) => {
+      const { error } = await supabase
+        .from("calls")
+        .update({
+          status: "draft_saved",
+          fields_confirmed: input.fieldsConfirmed,
+          fields_skipped: input.fieldsSkipped,
+        })
+        .eq("id", input.callId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["calls"] });
+    },
+  });
+}
+
+/** "Confirm & Sync" — persist edits, then mark the call synced. */
+export function useSyncCall() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      callId: string;
+      summary: string;
+      rows: { id: string; value: string; edited: boolean }[];
+      fieldsConfirmed: number;
+      fieldsSkipped: number;
+    }) => {
+      // Persist any inline edits made inside the sync modal.
+      for (const r of input.rows) {
+        const { error } = await supabase
+          .from("call_fields")
+          .update({ value: r.value, edited: r.edited, confirmed: true })
+          .eq("id", r.id);
+        if (error) throw error;
+      }
+      const { error: callErr } = await supabase
+        .from("calls")
+        .update({
+          status: "synced",
+          summary: input.summary,
+          synced_at: new Date().toISOString(),
+          fields_confirmed: input.fieldsConfirmed,
+          fields_skipped: input.fieldsSkipped,
+        })
+        .eq("id", input.callId);
+      if (callErr) throw callErr;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["calls"] });
+      qc.invalidateQueries({ queryKey: ["call_fields", vars.callId] });
     },
   });
 }

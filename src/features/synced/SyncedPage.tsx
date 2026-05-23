@@ -7,8 +7,9 @@ import {
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
 import { StateControls, Skeleton, ScreenState } from "@/components/shell/StateControls";
 import { cn } from "@/lib/utils";
-import { CONFIRMED_FIELDS, REVIEW_QUEUE, PREVIOUS_CALLS } from "@/data/calls";
+import { CONFIRMED_FIELDS, REVIEW_QUEUE } from "@/data/calls";
 import { useSyncedPayload } from "./useSyncedPayload";
+import { formatSyncedAt } from "@/lib/queries";
 
 const STEPS = ["Call Ended", "AI Drafted", "Ready for Review", "Fields Confirmed", "Synced to Salesforce"];
 
@@ -16,9 +17,9 @@ const STEPS = ["Call Ended", "AI Drafted", "Ready for Review", "Fields Confirmed
  * SyncedPage — what just synced.
  *
  * Two modes:
- *   1. fresh-sync — driven by the payload the Review screen persisted.
- *      Falls back to canned data only if no payload is found.
- *   2. history view — if `:id` matches a previous call, render read-only.
+ *   1. fresh-sync — driven by the call_fields rows the Review screen wrote.
+ *      Falls back to canned data only if the call has no field rows.
+ *   2. history view — if the call is already in `synced` status, render read-only.
  *
  * State controls (top-right) let demoers toggle observability/error states.
  */
@@ -37,23 +38,21 @@ export default function SyncedPage() {
     return () => clearTimeout(t);
   }, [pipelineState]);
 
-  // history mode if id matches a previous call
-  const previous = PREVIOUS_CALLS.find((c) => c.id === id);
-  const isHistory = !!previous;
-  const contact = previous?.contact || "Maya Chen";
-  const company = previous?.company || "Northwind Robotics";
+  // History mode = the underlying call row is already synced.
+  const { drafts, syncedPayload, call } = useSyncedPayload({ slug: id, isHistory: false });
+  const isHistory = call?.status === "synced" && id !== "maya-chen";
+  const contact = call?.contact_name ?? "Maya Chen";
+  const company = call?.company ?? "Northwind Robotics";
 
   const queueRest = REVIEW_QUEUE.filter((c) => c.id !== "maya-chen").slice(0, 3);
   const nextCall = queueRest[0];
-
-  const { drafts, syncedPayload } = useSyncedPayload({ isHistory });
 
   // Use what was actually synced when available; otherwise fall back to the canned data.
   const displayedFields = syncedPayload?.syncedFields?.length
     ? syncedPayload.syncedFields.map((f) => ({ label: f.label, value: f.value, source: f.source, edited: f.edited }))
     : CONFIRMED_FIELDS.map((f) => ({ ...f, edited: false }));
   const skippedFields = syncedPayload?.skippedFields ?? [];
-  const displayedSummary = syncedPayload?.summary;
+  const displayedSummary = syncedPayload?.summary ?? call?.summary ?? undefined;
   const fieldCount = displayedFields.length;
 
   useEffect(() => {
@@ -63,7 +62,7 @@ export default function SyncedPage() {
   }, [isHistory]);
 
   const syncedLabel = isHistory
-    ? `Synced ${previous?.syncedAt}`
+    ? `Synced ${formatSyncedAt(call?.synced_at ?? null) ?? ""}`
     : secAgo < 60 ? `${secAgo} seconds ago` : `${Math.floor(secAgo / 60)} min ago`;
 
   return (

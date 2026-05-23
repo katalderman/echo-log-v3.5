@@ -91,13 +91,6 @@ export const TIMELINE_GROUPS: TimelineGroup[] = [
   },
 ];
 
-// localStorage keys used to persist drafts and the most-recent sync payload.
-// Centralised so the Synced screen can read what the Review screen wrote.
-export const STORAGE_KEYS = {
-  drafts: "pulse:drafts",
-  syncedMaya: "pulse:synced:maya-chen",
-} as const;
-
 export type SyncRow = {
   key: string;
   label: string;
@@ -106,22 +99,3 @@ export type SyncRow = {
   edited: boolean;
 };
 
-export type SyncedFieldPayload = SyncRow & { source: string };
-
-export type SyncedPayload = {
-  summary: string;
-  syncedFields: SyncedFieldPayload[];
-  skippedFields: { key: string; label: string; value: string }[];
-  syncedAt: string;
-};
-
-export type DraftRecord = {
-  id: string;
-  contact: string;
-  company: string;
-  duration: string;
-  date: string;
-  fieldsConfirmed: number;
-  fieldsTotal: number;
-  savedAt: string;
-};
