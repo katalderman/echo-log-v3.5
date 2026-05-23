@@ -76,8 +76,8 @@ export default function PreviousCallsPage() {
   const metrics = metricsQuery.data;
   // Only show skeletons if loading exceeds 600ms — avoids flash for cached/fast fetches.
   // Manual override (StateControls = "loading") bypasses the delay for demoability.
-  const showLoadingSkeleton =
-    stateOverride === "loading" || useDelayedFlag(screenState === "loading" && stateOverride === "auto");
+  const delayedLoading = useDelayedFlag(screenState === "loading" && stateOverride === "auto");
+  const showLoadingSkeleton = stateOverride === "loading" || delayedLoading;
 
 
   return (
