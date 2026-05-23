@@ -303,15 +303,17 @@ export function useSyncCall() {
 /* Meeting integrations (Import modal)                                 */
 /* ------------------------------------------------------------------ */
 
-/** All meeting integrations for the current (placeholder) user. */
+/** All meeting integrations for the current user. */
 export function useMeetingIntegrations() {
   return useQuery({
     queryKey: ["meeting_integrations"],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [] as MeetingIntegrationRow[];
       const { data, error } = await supabase
         .from("meeting_integrations")
         .select("*")
-        .eq("user_id", PROTOTYPE_USER_ID);
+        .eq("user_id", user.id);
       if (error) throw error;
       return data as MeetingIntegrationRow[];
     },
@@ -323,12 +325,14 @@ export function useToggleIntegration() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: { provider: MeetingProvider; connect: boolean }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
       const now = new Date().toISOString();
       const { error } = await supabase
         .from("meeting_integrations")
         .upsert(
           {
-            user_id: PROTOTYPE_USER_ID,
+            user_id: user.id,
             provider: input.provider,
             status: input.connect ? "connected" : "disconnected",
             connected_at: input.connect ? now : null,
