@@ -151,38 +151,16 @@ export default function PreviousCallsPage() {
             {/* Table */}
             <div className={cn(isBrandNew ? "col-span-12" : "col-span-9")}>
               <div className={cn(
-                "bg-card border border-border rounded overflow-hidden",
-                screenState === "error" && "border-l-4 border-l-destructive"
+                screenState !== "error" && "bg-card border border-border rounded overflow-hidden",
               )}>
                 {screenState === "error" ? (
-                  <div className="px-6 py-12 text-center">
-                    <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-3" />
-                    <div className="text-[14px] font-semibold text-destructive">Couldn't load your call history.</div>
-                    <div className="text-[12px] text-muted-foreground mt-1 max-w-md mx-auto">
-                      Salesforce returned an error. Your data isn't lost — try refreshing the page.
-                    </div>
-                    <div className="mt-4 flex items-center justify-center gap-3">
-                      <button
-                        onClick={() => { setStateOverride("auto"); callsQuery.refetch(); }}
-                        className="h-8 px-4 text-[12px] font-medium bg-primary text-primary-foreground rounded hover:bg-primary/90 flex items-center gap-1.5"
-                      >
-
-                        <RefreshCw className="w-3.5 h-3.5" /> Refresh
-                      </button>
-                      <button
-                        onClick={() => setShowErrorDetails((v) => !v)}
-                        className="text-[11px] text-primary hover:underline"
-                      >
-                        {showErrorDetails ? "Hide" : "View"} error details
-                      </button>
-                    </div>
-                    {showErrorDetails && (
-                      <div className="mt-3 mx-auto max-w-md text-left bg-secondary border border-border rounded px-3 py-2 text-[11px] font-mono text-muted-foreground">
-                        Request ID: 7d2c9f3e-4a1b-419c-bc92-1f3d80a2c114<br />
-                        Status: 503 SERVICE_UNAVAILABLE · pulse-api/v3
-                      </div>
-                    )}
-                  </div>
+                  <QueryErrorCard
+                    title="Couldn't load your call history."
+                    message="Pulse couldn't reach the call history service. Your data isn't lost — try again."
+                    error={callsQuery.error}
+                    onRetry={() => { setStateOverride("auto"); callsQuery.refetch(); }}
+                    retrying={callsQuery.isRefetching}
+                  />
                 ) : screenState === "loading" ? (
                   <table className="w-full text-[12px]">
                     <thead className="bg-secondary/60 border-b border-border text-[10px] uppercase tracking-wide text-muted-foreground">
