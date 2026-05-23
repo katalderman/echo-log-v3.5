@@ -291,3 +291,11 @@ cite it back to this section.
     "You haven't reviewed any calls yet" empty state, already wired to the
     real `usePreviousCalls().data.length`.
   - Search/filter zero-results on Previous Calls is preserved.
+- **Loading skeletons (≥600ms)** — skeletons on Previous Calls (table rows),
+  Active Call (Pre-Call Brief + Live Talking Points), and Synced (pipeline
+  push) are gated behind `useDelayedFlag(..., 600)`. Fetches that resolve in
+  under 600ms render their real content directly — no flash of skeleton on
+  cached or fast network responses. Slower fetches still get the full
+  skeleton treatment. Manual `StateControls` "loading" override bypasses the
+  delay so the demo state is always inspectable. See
+  `src/lib/useDelayedFlag.ts`.
