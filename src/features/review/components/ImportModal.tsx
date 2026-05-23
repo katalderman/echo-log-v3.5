@@ -1,15 +1,32 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Calendar, Check, FileText, FileUp, Plug, Search, Upload, X } from "lucide-react";
+import { Calendar, Check, FileText, FileUp, Loader2, Plug, Search, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  useMeetingIntegrations,
+  useToggleIntegration,
+  type MeetingProvider,
+} from "@/lib/queries";
 
 type Props = { onClose: () => void };
+
+/** Display order + labels for the Connect Source grid. */
+const PROVIDERS: { key: MeetingProvider; label: string }[] = [
+  { key: "zoom", label: "Zoom" },
+  { key: "teams", label: "Teams" },
+  { key: "google_meet", label: "Google Meet" },
+  { key: "granola", label: "Granola" },
+  { key: "otter", label: "Otter" },
+];
 
 /** ImportModal — bring an external transcript into Pulse for drafting. */
 export function ImportModal({ onClose }: Props) {
   const [tab, setTab] = useState<"paste" | "upload" | "connect">("paste");
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  const integrations = useMeetingIntegrations();
+  const toggle = useToggleIntegration();
 
   useEffect(() => {
     if (!processing) return;
@@ -28,13 +45,18 @@ export function ImportModal({ onClose }: Props) {
     }
   }, [progress, onClose]);
 
-  const sources = [
-    { name: "Zoom", connected: true },
-    { name: "Teams", connected: false },
-    { name: "Google Meet", connected: false },
-    { name: "Granola", connected: false },
-    { name: "Otter", connected: false },
-  ];
+  const isConnected = (p: MeetingProvider) =>
+    integrations.data?.some((row) => row.provider === p && row.status === "connected") ?? false;
+
+  const handleConnect = (p: MeetingProvider, label: string) => {
+    toggle.mutate(
+      { provider: p, connect: true },
+      {
+        onSuccess: () => toast.success(`${label} connected`),
+        onError: () => toast.error(`Couldn't connect ${label} — please try again.`),
+      },
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 grid place-items-center px-4 py-8">
