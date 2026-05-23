@@ -114,6 +114,8 @@ hooks live in `src/lib/queries.ts`:
 | `useUpdateCallField(callId)`  | updates one `call_fields` row               |
 | `useSaveDraft()`              | sets `calls.status = 'draft_saved'`         |
 | `useSyncCall()`               | persists edits and sets `calls.status = 'synced'` |
+| `useMeetingIntegrations()`    | `meeting_integrations` for the current user |
+| `useToggleIntegration()`      | upserts a `meeting_integrations` row (Connect Source) |
 
 `useReviewState` mirrors `call_fields` into local state so confirm /
 skip / edit / voice-amendment interactions stay instant, then fires
