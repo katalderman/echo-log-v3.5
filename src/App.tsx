@@ -12,6 +12,7 @@ import NotFoundPage from "@/features/not-found/NotFoundPage";
 import AuthPage from "@/features/auth/AuthPage";
 import AuthGate from "@/features/auth/AuthGate";
 import { AUTH_EXPIRED_EVENT, isAuthError } from "@/lib/authEvents";
+import { OfflineBanner } from "@/components/shell/OfflineBanner";
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -50,6 +51,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <OfflineBanner />
         <AuthGate>
           <Routes>
             <Route path="/auth" element={<AuthPage />} />

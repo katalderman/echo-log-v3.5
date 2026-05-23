@@ -308,3 +308,15 @@ cite it back to this section.
   Auth-shaped errors (401, JWT expired) are diverted to the same
   `AUTH_EXPIRED_EVENT` redirect as reads, so writes never silently drop
   the user into a stale session. No mutation in Pulse fails silently.
+- **Offline / no connection** — `OfflineBanner` (mounted once in `src/App.tsx`,
+  above every route) subscribes to `window.online`/`offline` via
+  `useOnlineStatus`. While offline, a sticky destructive banner stays
+  pinned to the top of the viewport ("You're offline — Pulse will
+  reconnect automatically…") until connectivity returns. On reconnect it
+  flashes a "Back online — refreshing your data…" success banner and
+  calls `queryClient.invalidateQueries()` so stale views refetch without
+  a page reload. `QueryErrorCard` also adapts: when offline it swaps to a
+  `WifiOff` icon, retitles to "You're offline", and disables Retry
+  (tooltip: "Waiting for your connection") to stop users hammering a
+  dead network. See `src/lib/useOnlineStatus.ts` and
+  `src/components/shell/OfflineBanner.tsx`.
