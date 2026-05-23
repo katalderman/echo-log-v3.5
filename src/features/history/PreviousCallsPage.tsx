@@ -74,6 +74,10 @@ export default function PreviousCallsPage() {
   const isBrandNew = screenState === "empty";
   const totalCount = callsQuery.data?.length ?? 0;
   const metrics = metricsQuery.data;
+  // Only show skeletons if loading exceeds 600ms — avoids flash for cached/fast fetches.
+  // Manual override (StateControls = "loading") bypasses the delay for demoability.
+  const showLoadingSkeleton =
+    stateOverride === "loading" || useDelayedFlag(screenState === "loading" && stateOverride === "auto");
 
 
   return (
@@ -162,7 +166,7 @@ export default function PreviousCallsPage() {
                     onRetry={() => { setStateOverride("auto"); callsQuery.refetch(); }}
                     retrying={callsQuery.isRefetching}
                   />
-                ) : screenState === "loading" ? (
+                ) : screenState === "loading" ? (showLoadingSkeleton ? (
                   <table className="w-full text-[12px]">
                     <thead className="bg-secondary/60 border-b border-border text-[10px] uppercase tracking-wide text-muted-foreground">
                       <tr>
@@ -186,7 +190,9 @@ export default function PreviousCallsPage() {
                       ))}
                     </tbody>
                   </table>
-                ) : isBrandNew ? (
+                ) : (
+                  <div className="min-h-[280px]" aria-busy="true" aria-label="Loading calls" />
+                )) : isBrandNew ? (
                   <div className="px-6 py-16 text-center">
                     <div className="w-12 h-12 rounded-full bg-secondary border border-border grid place-items-center mx-auto mb-3">
                       <Inbox className="w-6 h-6 text-muted-foreground" />
