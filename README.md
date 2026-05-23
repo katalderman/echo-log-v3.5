@@ -238,5 +238,42 @@ cite it back to this section.
 - `src/data/calls.ts` has been removed. All call/queue/field data now flows
   through `src/lib/queries.ts` against Lovable Cloud.
 - The `Outcome` display union lives in `src/lib/queries.ts`.
+### Verifying RLS with two accounts
+
+The prototype has been smoke-tested against the policy matrix using two
+synthetic reps. Reproduce locally:
+
+1. Sign up `rep_a@test.dev` and `rep_b@test.dev` from `/auth`. Each gets a
+   `profiles` row + a `'rep'` row in `user_roles` via `handle_new_user`.
+2. Verify the email for both (the confirmation link logs you in).
+3. As `rep_a`, create at least one call (any insert via the app — the
+   `owner_id` is stamped from `auth.uid()`).
+4. As `rep_b`, open `/calls/history` — `rep_a`'s call must **not** appear.
+5. From the browser devtools console while signed in as `rep_b`, run:
+   ```js
+   const { data, error } = await supabase
+     .from("call_fields")
+     .select("id, call_id, label, value");
+   console.log({ data, error });
+   ```
+   Expect `data` to contain only rows from calls `rep_b` owns; `rep_a`'s
+   rows must be filtered out by the
+   `Call fields readable when parent call is` policy.
+
+Programmatic checks already in place:
+- `supabase--linter` reports no critical findings. The one `WARN` on
+  `has_role` is intentional and documented in the security memory —
+  `has_role` is the recursion-safe helper used by every policy.
+- `pg_policies` shows every `public.*` table is scoped by `auth.uid()`,
+  `has_role(..., 'admin')`, or team-manager visibility via
+  `profiles.team_id`. No `USING (true)` policies remain.
+
+## Cleanup notes
+
+- `src/data/calls.ts` has been removed. All call/queue/field data now flows
+  through `src/lib/queries.ts` against Lovable Cloud.
+- The `Outcome` display union lives in `src/lib/queries.ts`.
 - Persona quotes from the Review screen prototype have moved into the
   "Research context" section above.
+- `PROTOTYPE_USER_ID` has been removed from `src/lib/queries.ts`. All
+  user-scoped reads/writes now resolve `auth.uid()` at call time.
