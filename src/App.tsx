@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -10,8 +10,17 @@ import PreviousCallsPage from "@/features/history/PreviousCallsPage";
 import NotFoundPage from "@/features/not-found/NotFoundPage";
 import AuthPage from "@/features/auth/AuthPage";
 import AuthGate from "@/features/auth/AuthGate";
+import { AUTH_EXPIRED_EVENT, isAuthError } from "@/lib/authEvents";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error) => {
+      if (isAuthError(error)) {
+        window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+      }
+    },
+  }),
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

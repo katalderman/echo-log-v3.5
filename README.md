@@ -266,12 +266,12 @@ cite it back to this section.
 - `PROTOTYPE_USER_ID` has been removed from `src/lib/queries.ts`. All
   user-scoped reads/writes now resolve `auth.uid()` at call time.
 
-## Cleanup notes
+## Edge cases handled
 
-- `src/data/calls.ts` has been removed. All call/queue/field data now flows
-  through `src/lib/queries.ts` against Lovable Cloud.
-- The `Outcome` display union lives in `src/lib/queries.ts`.
-- Persona quotes from the Review screen prototype have moved into the
-  "Research context" section above.
-- `PROTOTYPE_USER_ID` has been removed from `src/lib/queries.ts`. All
-  user-scoped reads/writes now resolve `auth.uid()` at call time.
+- **Session expiry** — `AuthGate` subscribes to `supabase.auth.onAuthStateChange`.
+  On `SIGNED_OUT` (after a prior session existed) or a failed `TOKEN_REFRESHED`,
+  the user gets a "Your session expired — please sign in again." toast and is
+  redirected to `/auth`. The React Query `QueryCache` also dispatches the same
+  signal (`pulse:auth-expired`) when any query returns a 401 / JWT error
+  (`status === 401`, `code === "PGRST301"`, or a "jwt expired" message). See
+  `src/lib/authEvents.ts` and `src/features/auth/AuthGate.tsx`.
