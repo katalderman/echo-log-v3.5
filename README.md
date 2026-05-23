@@ -197,10 +197,25 @@ table is now scoped to the authenticated user:
   in. Signup writes `display_name` into `auth.users.raw_user_meta_data`
   so the `handle_new_user` trigger picks it up.
 
+### TopBar identity & sign-out
+
+The TopBar avatar is no longer a hardcoded `JR`. It reads `profiles.initials`
+for `auth.uid()` and opens a dropdown with the current display name, the
+signed-in email, and a **Sign out** action that calls `supabase.auth.signOut()`
+and redirects to `/auth`.
+
+### `owner_id` on writes
+
+`PROTOTYPE_USER_ID` is gone. Every mutation that needs an owner reads
+`auth.uid()` via `supabase.auth.getUser()` before writing — currently this
+is `useMeetingIntegrations` / `useToggleIntegration`. All other mutations
+(`useUpdateCallField`, `useSaveDraft`, `useSyncCall`) are updates against
+rows whose `owner_id` was already stamped at insert time, and RLS enforces
+that only the owner / their manager / an admin can touch them.
+
 ### Remaining work (next commits)
 
-1. **Commit 3** — TopBar profile + sign-out, `owner_id = auth.uid()` on all writes.
-2. **Commit 4** — Two-account RLS verification.
+1. **Commit 4** — Two-account RLS verification.
 
 
 

@@ -1,9 +1,19 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import {
   Home, Phone, Users, Building2, BarChart3, Settings, Search, HelpCircle, Bell,
-  ChevronRight, X, History,
+  ChevronRight, X, History, LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function NavRail() {
   const { pathname } = useLocation();
@@ -44,6 +54,38 @@ export function NavRail() {
 }
 
 export function TopBar() {
+  const navigate = useNavigate();
+  const [initials, setInitials] = useState("…");
+  const [displayName, setDisplayName] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      setEmail(user.email ?? "");
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("display_name, initials")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (profile) {
+        setInitials(profile.initials || "U");
+        setDisplayName(profile.display_name || "");
+      } else {
+        setInitials((user.email ?? "U").slice(0, 2).toUpperCase());
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth", { replace: true });
+  };
+
   return (
     <header className="h-12 bg-card border-b border-border flex items-center px-4 gap-4 sticky top-0 z-20">
       <div className="text-[13px] font-semibold text-nav">Pulse</div>
@@ -61,7 +103,31 @@ export function TopBar() {
           <Bell className="w-4 h-4" />
           <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-destructive" />
         </button>
-        <div className="w-7 h-7 rounded-full bg-teal grid place-items-center text-[11px] font-medium text-white">JR</div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              aria-label="Account menu"
+              className="w-7 h-7 rounded-full bg-teal grid place-items-center text-[11px] font-medium text-white hover:opacity-90"
+            >
+              {initials}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col">
+                {displayName && <span className="text-sm font-medium">{displayName}</span>}
+                <span className="text-xs text-muted-foreground truncate">
+                  Signed in as {email || "—"}
+                </span>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSignOut}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
