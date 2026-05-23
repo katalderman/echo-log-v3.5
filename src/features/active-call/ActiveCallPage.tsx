@@ -227,7 +227,15 @@ export default function ActiveCallPage() {
                 <div className="text-[11px] text-muted-foreground mt-0.5">Glance reference. Pulse is listening — you don't need to take field notes.</div>
               </div>
 
-              {briefState === "loading" ? (
+              {dbError ? (
+                <QueryErrorCard
+                  title="Couldn't load the pre-call brief."
+                  message="Pulse couldn't reach the briefing service. The call itself is unaffected — your audio is still being captured."
+                  error={briefQuery.error ?? callQuery.error ?? sessionQuery.error}
+                  onRetry={retryAll}
+                  retrying={briefQuery.isRefetching || callQuery.isRefetching || sessionQuery.isRefetching}
+                />
+              ) : briefState === "loading" ? (
                 <div className="bg-card border border-border rounded">
                   {[0, 1, 2].map((i) => (
                     <div key={i} className={cn("px-4 py-3", i < 2 && "border-b border-border")}>
