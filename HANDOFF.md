@@ -1,306 +1,407 @@
 # Pulse — Engineering Handoff
 
-This document hands off the Pulse prototype to the engineering team taking it
-to production. It assumes you've skimmed [`README.md`](./README.md) (architecture)
-and [`PRD.md`](./PRD.md) (product intent). This file covers **what's here, how
-it fits together, and where to start**.
+> **For the engineer inheriting this project.** This document tells you what's real, what's mocked, what's broken, and what to ship first. Read top-to-bottom; it's ordered by what you need to know to make a decision in your first hour, your first day, and your first sprint.
+
+---
+
+## TL;DR
+
+Pulse is a Salesforce-Lightning-styled review layer that turns AI-generated meeting summaries into confirmed CRM data. A sales rep ends a Zoom call, lands on the Review screen, confirms seven AI-drafted fields, and clicks Sync. The CRM gets clean, structured, rep-approved data — without anyone having retyped a meeting transcript.
+
+The prototype is real where it matters for testing the trust hypothesis (Supabase data layer, three-role RLS, full auth flow, production-grade error handling) and mocked where the test doesn't require real infrastructure (Salesforce writes, meeting-platform OAuth, AI summary generation, voice transcription).
+
+**The one thing to fix first:** replace the mocked Salesforce sync with a real Salesforce write integration. Everything else in this document can be deferred. The Salesforce write cannot. See [Start Here](#start-here) at the bottom.
 
 ---
 
 ## Start Here
 
-**Goal**: turn this UI prototype into a real product. Routing, page-level
-state, and the localStorage persistence contract are real. Everything that
-crosses a network boundary (Zoom, the LLM, Salesforce) is mocked.
+**The #1 technical priority for Day 1: replace the mocked Salesforce sync with a real Salesforce write integration.**
 
-### Suggested onboarding path (≈ 1 day)
+This is the single piece of work that determines whether Pulse becomes a real product or remains a credible prototype. Everything else — the seven CRM fields, the trust indicators, the consent modal, the auto-save drafts — exists to support this one moment, and right now that moment is a 3-step animated overlay with no payload leaving Pulse's database.
 
-1. **Run it locally.**
-   ```sh
-   npm install && npm run dev
-   ```
-   Visit `/` (the main screen). Confirm a few fields, skip one, click
-   **Confirm & Sync to Salesforce**, watch the modal animate, land on the
-   Synced screen, hit **Back to Queue** to start over. That's the loop.
+The work involves four steps in dependency order:
 
-2. **Read `README.md`** (architecture rules) and **`PRD.md`** (why this exists,
-   hypothesis, metrics). Don't skip the PRD — the *confirm-or-skip, never
-   silent-sync* posture is load-bearing.
+**1. OAuth handshake with the customer's Salesforce instance.** Not a one-day task — it requires negotiating OAuth scopes (`api` minimum, likely `refresh_token` and `offline_access` for long-lived sessions), provisioning a Connected App in the customer's Salesforce org, and storing the resulting tokens encrypted at rest. Start with a single design-partner customer rather than building a multi-tenant OAuth flow from scratch.
 
-3. **Read these three files in order — that's the whole prototype's brain:**
-   - [`src/features/review/data.ts`](./src/features/review/data.ts) — types,
-     seed data, `STORAGE_KEYS`. The data model lives here.
-   - [`src/features/review/useReviewState.ts`](./src/features/review/useReviewState.ts)
-     — the only stateful hook. Owns every interaction on `/`.
-   - [`src/features/review/ReviewPage.tsx`](./src/features/review/ReviewPage.tsx)
-     — the main screen. Pure display; reads from the hook.
+**2. Field mapping.** Pulse's seven fields (Outcome, Next Step, Decision Maker, Budget Signal, Timeline, Objections, Sentiment) are opinionated. The customer's Salesforce instance has its own field schema with custom fields, validation rules, and required-field enforcement. The integration needs a configuration layer mapping each Pulse field to a target Salesforce field per customer, with the ability to skip fields that don't exist in the target instance. Without this layer, the integration breaks the moment it touches a non-standard Salesforce org.
 
-4. **Trace one round-trip end-to-end.** Confirm a field on `/`, change it in
-   the Sync Modal, confirm sync, then on the Synced page (`/calls/complete/maya-chen`)
-   verify the edited value appears under "What Just Synced". The contract
-   that makes this work is two `localStorage` keys defined in `data.ts` and
-   read by `useSyncedPayload`. Replace those reads/writes with API calls and
-   you have a working backend.
+**3. Write semantics and rollback.** Pulse currently flips `calls.status = 'synced'` *before* a real Salesforce write would occur. The production version needs a two-phase commit: write to Salesforce first, then on success flip the Pulse status; on failure surface the existing `"Sync failed — record is currently locked by another user. Your draft is saved"` error state (already designed in the M3 Behavior chain) and leave the call in `drafted` state for retry. The infrastructure for this error path exists in the UI; the engineer just needs to wire it to a real failure source.
 
-5. **Pick your first ticket.** See *What ships next* below.
+**4. Verification and observability.** After a real Salesforce write, the existing `"Synced, but verification timed out"` amber-banner state needs to be wired to a real verification call: read the record back from Salesforce within 5 seconds of write, confirm field values match what Pulse wrote, and trip the banner if the read fails or returns unexpected values. This handles the "succeeded but can't confirm" distributed-systems case the UI was designed for.
 
-### Where you'll spend your time
+**Why this is the right Day 1 priority:** every other gap in this document (denormalized contacts table, missing audit log, brittle provider CHECK constraint, no rate limiting) can be solved incrementally without touching the core user experience. The Salesforce write cannot. It's the only mocked element that, when real, fundamentally changes what Pulse *is* — from a review surface that pretends to update a CRM into a review surface that actually does. The kill switch this build was designed to test (do reps trust AI drafts enough to confirm without verifying?) cannot be answered until reps see real CRM data flowing from their confirmations.
 
-| If you're working on… | Start in… |
-|---|---|
-| The review experience | `src/features/review/` |
-| The post-sync screen | `src/features/synced/` |
-| The pre-call/in-call UI | `src/features/active-call/` |
-| Call history table | `src/features/history/` |
-| Layout chrome (nav, top bar, tabs) | `src/components/shell/` |
-| Mock data (queue, history, fields) | `src/data/calls.ts` |
-| Design tokens | `src/index.css`, `tailwind.config.ts` |
+**Effort estimate:** 3–4 engineer-weeks for a single-customer integration with one design partner. 8–12 engineer-weeks to generalize for multi-tenant use across arbitrary Salesforce orgs. Recommend starting single-tenant and converting once a second customer is live.
 
-### Architecture rules (don't break these)
-
-- **Display is dumb.** Page components receive props and render. No
-  `localStorage`, no timers — those belong in hooks.
-- **State lives in `useXxxState` hooks.** Swapping the mock backend = rewriting
-  one hook.
-- **Data is a module, not a hook.** Seeds, types, and `STORAGE_KEYS` are
-  importable from anywhere.
-- **Group by feature, not by type.** New screen = new folder under `features/`.
-- **Tokens, not raw colors.** Use `bg-primary`, not `bg-blue-500`. All tokens
-  are HSL in `index.css`.
+**What NOT to prioritize on Day 1, despite temptation:** rebuilding the schema to split contacts/accounts/deals; adding the `audit_log` table; implementing real OAuth flows for the meeting platforms. All of these are real production gaps, but none of them are blocking the kill-switch test. Ship the Salesforce write first; refactor schema once you have one real customer using it.
 
 ---
 
-## Component inventory
+## Functional Truth
 
-### Pages (one per route)
+### What's operational
 
-| File | Route | Purpose |
+These are real and engineer-ready. You can trust them, build on them, and reference them as the baseline.
+
+**Data layer (Supabase via Lovable Cloud).** Ten application tables exist with enforced foreign keys, type-checked enum constraints, and Row-Level Security policies on every public table. All hardcoded seed data has been removed from the codebase — the file `src/data/calls.ts` no longer exists, and every screen's data flows through React Query hooks in `src/lib/queries.ts`.
+
+**Authentication.** The `/auth` route handles email/password sign-up, sign-in, and Google OAuth via Lovable Cloud's managed provider. The `<AuthGate>` component wraps the router and redirects unauthenticated traffic. On first signup, the `handle_new_user()` Postgres trigger creates a `profiles` row with a computed display name and inserts a `('user_id', 'rep')` row into `user_roles`. The TopBar reads `profiles.initials` for the authenticated user rather than the prototype's hardcoded `"JR"`.
+
+**Three-role RLS.** The `app_role` enum (`'admin'`, `'manager'`, `'rep'`) is enforced through a security-definer function `public.has_role(_user_id uuid, _role app_role)` that all policies reference to avoid recursive RLS. The four open `"Prototype: anyone can..."` policies have been dropped. Cross-user data isolation has been verified through a two-account smoke test (`rep_a@test.dev` vs `rep_b@test.dev`) plus a `pg_policies` audit confirming no `USING (true)` policies remain.
+
+**Error, offline, and session handling.** A global `MutationCache.onError` handler routes every write failure to a sonner toast with a Retry action that re-runs the exact failed mutation with original variables — no mutation fails silently. The `OfflineBanner` subscribes to `window.online`/`offline` events and triggers `queryClient.invalidateQueries()` on reconnect. A custom `pulse:auth-expired` event is dispatched by both `AuthGate` and the React Query `QueryCache` on 401 or JWT-expired responses, centralizing session-expiry redirects. Loading skeletons are gated through `useDelayedFlag(..., 600)` so fast or cached fetches don't flash skeleton state.
+
+### What's mocked
+
+These are visual or behavioral simulations, not real systems. Treat them as design surfaces, not infrastructure.
+
+**Meeting platform ingestion (Zoom, Teams, Granola, Google Meet, Otter).** The `meeting_integrations` table tracks which providers each user has marked as connected, and the Import Modal UI behaves as if real OAuth handshakes occurred, but no actual transcript-fetch infrastructure exists.
+
+**AI summary generation and field extraction.** The seven `call_fields` rows per call are pre-populated as static seed data rather than generated by an LLM against a real transcript. The `call_fields.original_value`, `confidence`, and `source_quote` columns are all populated by hand-curated mock data designed to look like LLM output.
+
+**Salesforce write.** The Sync Modal renders a 3-step animated overlay (validating permissions → writing fields → logging activity) that simulates the latency and feedback of a real CRM write, but no data actually leaves the Supabase database. The `calls.status` field flips from `drafted` to `synced` in Pulse's own database; nothing reaches Salesforce.
+
+**Active Call live session.** The Active Call screen's elapsed timer is real (driven by `call_sessions.started_at`), but no actual Zoom session is being monitored. The "connection dropped" state is triggered manually for testing rather than detected from a real meeting platform's webhook.
+
+**Voice transcription on amendments.** Clicking "Record voice note" runs a `setTimeout` and returns canned diff data rather than calling a real speech-to-text API.
+
+**Pipeline Review Preview push.** The Synced screen renders forecast-grade summary data, but the "push to manager dashboard" action is visual confirmation only; there is no aggregation layer feeding a real sales manager's forecast view.
+
+---
+
+## Integrations & Data Model
+
+### Active integrations
+
+| Integration | Status | Notes |
 |---|---|---|
-| `features/review/ReviewPage.tsx` | `/` | Review & Confirm — the main screen. Renders 7 AI-drafted fields and gates sync until each is confirmed or skipped. |
-| `features/synced/SyncedPage.tsx` | `/calls/complete/:id` | Post-sync receipt. Reads the persisted payload so it shows what *actually* synced (edits, skips), not a canned snapshot. Doubles as a read-only history view when `:id` matches a previous call. |
-| `features/active-call/ActiveCallPage.tsx` | `/calls/active` | In-call mock. Pre-call brief, talking points, quick-note pad. Demonstrates the "Pulse is listening, you don't need to take field notes" promise. |
-| `features/history/PreviousCallsPage.tsx` | `/calls/history` | Searchable, filterable table of previously synced calls. Rows deep-link into the Synced page in history mode. |
-| `features/not-found/NotFoundPage.tsx` | `*` | 404 fallback. |
+| Lovable Cloud (Supabase Postgres) | Live | Full schema with RLS; primary data store |
+| Supabase Auth | Live | Email/password + Google OAuth; managed by Lovable Cloud |
+| GitHub | Live | Auto-sync on every Lovable response; commits in `main` |
+| Zoom / Teams / Granola / Google Meet / Otter | Mocked | UI tiles in Import Modal; no real OAuth handshake |
+| Salesforce | Mocked | 3-step animated sync overlay; no actual API integration |
+| Speech-to-text (voice amendments) | Mocked | `setTimeout` returns canned diffs |
 
-### Layout chrome — `src/components/shell/`
+There are no third-party API endpoints currently being called from the application code. All data flows are Supabase reads/writes through the React Query hooks in `src/lib/queries.ts`.
 
-| Component | Purpose |
+### Hook inventory
+
+The complete list of operational data hooks:
+
+| Hook | Reads / writes |
 |---|---|
-| `NavRail` | 60px-wide left rail (Salesforce Lightning–style). Active state derived from route. |
-| `TopBar` | Sticky 48px header with global search and avatar. |
-| `BreadcrumbTabs` | Salesforce-style breadcrumb + active tab strip under the top bar. |
-| `AppShell` | Convenience wrapper combining the three above. Currently each page composes them directly. |
-| `StateControls` | Demo toggle pill group for switching between `normal`/`loading`/`empty`/`error` page states. Used on Active Call, Synced, and History. |
-| `Skeleton` | One-class shimmer placeholder used inside loading states. |
+| `useCallsQueue()` | `calls` (in_review / drafted / draft_saved) |
+| `usePreviousCalls()` | `calls` (synced) |
+| `useDraftCalls()` | `calls` (drafted / draft_saved) |
+| `useCall(slug)` | `calls` by slug |
+| `useCallFields(id)` | `call_fields` |
+| `useCallBrief(id)` | `call_briefs` |
+| `useCallTimeline(id)` | `call_timeline_items` |
+| `useCallSession(id)` | `call_sessions` |
+| `useReviewMetrics()` | `review_metrics` |
+| `useUpdateCallField(callId)` | updates one `call_fields` row |
+| `useSaveDraft()` | sets `calls.status = 'draft_saved'` |
+| `useSyncCall()` | persists edits and sets `calls.status = 'synced'` |
+| `useMeetingIntegrations()` | `meeting_integrations` for the current user |
+| `useToggleIntegration()` | upserts a `meeting_integrations` row |
 
-### Review feature — `src/features/review/`
-
-| File | Purpose |
-|---|---|
-| `ReviewPage.tsx` | Composes the 3-column layout (About / Center / Activity) plus modals. All sub-components below (`StatBanner`, `RecordHeader`, `SourceBanner`, `PathBar`, `AboutCard`, `CenterHeader`, `SummaryBlock`, `FieldCard`, `AmendmentInput`, `ActivityTimeline`, `PipelineReviewPreview`, `TodoFooter`, `FloatingRecChip`) are co-located inside this file because they're tightly coupled to its layout. Promote any of them to `components/` if a second feature needs them. |
-| `useReviewState.ts` | The only stateful hook on `/`. Owns: field state, summary, expanded sources, path step, voice-amendment recording, draft persistence, and the `doSync` writer. |
-| `data.ts` | `Field`, `FieldKey`, `Confidence`, `SyncRow`, `SyncedPayload`, `DraftRecord`, `TimelineGroup` types; `SEED_FIELDS`, `SEED_SUMMARY`, `TIMELINE_GROUPS` seeds; `STORAGE_KEYS`. |
-| `components/SyncModal.tsx` | "Sync to Salesforce?" overlay. Inline-editable rows, edited-since-AI badge, 3-step progress animation, simulated-error path. Emits the final `SyncRow[]` to `onConfirm`. |
-| `components/ImportModal.tsx` | "Import Transcript" overlay (paste / upload / connect source). Tab-switch UI; processing animation; resolves with a toast. |
-
-### Synced feature — `src/features/synced/`
-
-| File | Purpose |
-|---|---|
-| `SyncedPage.tsx` | Renders post-sync confirmation. Two modes: fresh-sync (driven by persisted payload) and history (matches `:id` against `PREVIOUS_CALLS`). Sub-components (`Stat`, `AboutCard`, `PipelinePushPreview`) are co-located. |
-| `useSyncedPayload.ts` | Reads `STORAGE_KEYS.syncedMaya` and `STORAGE_KEYS.drafts` from localStorage. Returns `{ drafts, syncedPayload }`. Replace the `localStorage` reads with API calls when a backend exists. |
-
-### UI primitives — `src/components/ui/`
-
-Standard shadcn/ui set (button, dialog, toast, sonner, table, etc.). Untouched
-from the generator. Customise via `tailwind.config.ts` and `index.css` tokens
-rather than editing these files.
-
-### Generic hooks — `src/hooks/`
-
-- `use-toast.ts` — re-export wrapper around the shadcn toast.
-- `use-mobile.tsx` — `window.matchMedia` breakpoint hook.
-
----
-
-## Data model
-
-There is no backend. "The data model" is a set of TypeScript types + two
-`localStorage` keys that simulate a database.
-
-### Core types — defined in `src/features/review/data.ts`
-
-```ts
-type FieldKey =
-  | "outcome" | "next" | "dm" | "budget"
-  | "timeline" | "objections" | "sentiment";
-
-type Confidence = "high" | "med" | "low";
-
-type Field = {
-  key: FieldKey;
-  label: string;          // "Call outcome"
-  value: string;          // The AI's drafted value
-  confidence: Confidence; // Drives the dot color
-  source: { speaker: string; ts: string; quote: string }; // Citation
-  confirmed: boolean;
-  skipped?: boolean;
-};
-```
-
-The seven `FieldKey`s are the entire CRM-write surface. To add an eighth
-field, extend `FieldKey`, add to `SEED_FIELDS`, and the rest of the system
-picks it up automatically — `useReviewState` is `FieldKey`-agnostic, the
-Sync Modal renders whatever rows it gets, and the Synced page renders
-whatever was persisted.
-
-### Call record — defined in `src/data/calls.ts`
-
-```ts
-type CallRecord = {
-  id: string;             // Used as URL param: /calls/complete/:id
-  contact: string;        // "Maya Chen"
-  company: string;
-  title: string;
-  date: string;           // Pre-formatted; no Date objects in this prototype
-  duration: string;       // "24m 18s"
-  outcome: Outcome;       // Qualified | Booked | No Answer | Voicemail | Discovery | Lost
-  fieldsConfirmed: number;
-  fieldsTotal: number;    // Always 7 for now
-  syncedAt: string | null;
-  reviewed: boolean;
-  amount?: string;
-};
-```
-
-Two arrays of these power the entire app: `REVIEW_QUEUE` (today's calls
-awaiting review) and `PREVIOUS_CALLS` (history). `CONFIRMED_FIELDS` is a
-fallback snapshot used only if `localStorage` is empty when the Synced page
-loads.
-
-### Persistence contract
-
-Two `localStorage` keys, both centralised in `STORAGE_KEYS`:
-
-| Key | Shape | Written by | Read by |
-|---|---|---|---|
-| `pulse:drafts` | `DraftRecord[]` | `useReviewState.saveDraft` | `useSyncedPayload` (to surface "Resume" rows in the team queue) |
-| `pulse:synced:maya-chen` | `SyncedPayload` | `useReviewState.doSync` | `useSyncedPayload` (drives the "What Just Synced" rendering) |
-
-```ts
-type SyncedPayload = {
-  summary: string;
-  syncedFields: { key, label, value, original, edited, source }[];
-  skippedFields: { key, label, value }[];
-  syncedAt: string;       // ISO timestamp
-};
-
-type DraftRecord = {
-  id: string;             // Matches CallRecord.id
-  contact, company, duration, date: string;
-  fieldsConfirmed: number;
-  fieldsTotal: number;
-  savedAt: string;        // ISO
-};
-```
-
-This contract is the prototype's "API". When you build the real backend,
-preserve the shape — replace `localStorage.getItem` with `fetch` and
-nothing else needs to change in the display layer.
-
-### State machine (per field)
+### Database schema
 
 ```
-                ┌──── toggleConfirm ────►  confirmed
-                │                          (skipped:false)
-   drafted ────┤
-                │
-                └──── toggleSkip ───────►  skipped
-                                            (confirmed:false)
+calls
+├── id                 uuid PK
+├── owner_id           uuid FK → auth.users(id)
+├── slug               text (URL-safe identifier)
+├── contact_id         uuid FK → contacts(id)
+├── call_date          timestamptz
+├── duration_seconds   int
+├── outcome            enum call_outcome (Qualified/Booked/Discovery/
+│                                          NoAnswer/Voicemail/Lost)
+├── status             enum call_status (in_review/drafted/draft_saved/synced)
+├── summary            text  (AI-drafted narrative)
+├── fields_total       int   (default 7)
+├── fields_confirmed   int
+├── fields_skipped     int
+├── synced_at          timestamptz
+├── review_started_at  timestamptz
+└── created_at, updated_at
+
+call_fields
+├── id                 uuid PK
+├── call_id            uuid FK → calls(id) on delete cascade
+├── field_key          text (outcome/next/dm/budget/timeline/objections/sentiment)
+├── label              text
+├── value              text  (post-edit)
+├── original_value     text  (pre-edit AI draft, preserves lineage)
+├── confidence         enum field_confidence (high/med/low)
+├── source_speaker     text
+├── source_ts          text  (transcript timestamp)
+├── source_quote       text  (supporting transcript snippet)
+├── confirmed          bool
+├── skipped            bool
+├── edited             bool
+├── position           int   (display order)
+└── created_at, updated_at
+
+profiles
+├── id            uuid PK = auth.users(id)
+├── display_name  text  (from signup metadata or email local-part)
+├── initials      text  (computed at signup)
+├── team_id       uuid  (for manager team-scope and "Top 5% on team" widget)
+└── created_at
+
+user_roles
+├── id        uuid PK
+├── user_id   uuid FK → auth.users(id)
+├── role      enum app_role (admin/manager/rep)
+└── UNIQUE(user_id, role)
+
+contacts
+├── id              uuid PK
+├── owner_id        uuid FK → auth.users(id)
+├── full_name       text, title, email, phone
+├── account_name    text  (denormalized — see Known Gaps)
+├── stage           text
+└── amount_cents    bigint (denormalized — see Known Gaps)
+
+call_briefs (pre-call context for Active Call screen)
+├── id                  uuid PK
+├── call_id             uuid FK → calls(id)
+├── account_context     text
+├── last_touchpoint     text
+└── talking_points      jsonb (array)
+
+call_timeline_items (relationship history shown on Review screen)
+├── id              uuid PK
+├── call_id         uuid FK
+├── item_type       enum (call/email/task/note)
+├── title, when_label, description
+└── occurred_at     timestamptz
+
+call_sessions (live Zoom state for Active Call screen)
+├── id                    uuid PK
+├── call_id               uuid FK
+├── platform              text
+├── started_at            timestamptz
+├── status                enum (live/dropped/ended)
+└── connection_lost_at    timestamptz
+
+review_metrics (monthly aggregates per user)
+├── id                uuid PK
+├── user_id           uuid FK
+├── period_start      date
+├── calls_reviewed    int
+├── seconds_saved     int
+└── pct_unedited      numeric (0–100)
+
+meeting_integrations (per-user provider connections)
+├── id                uuid PK
+├── user_id           uuid FK → auth.users(id) on delete cascade
+├── provider          text CHECK IN ('zoom','teams','google_meet','granola','otter')
+├── status            text CHECK IN ('connected','disconnected') default 'disconnected'
+├── connected_at      timestamptz
+├── last_synced_at    timestamptz
+└── UNIQUE(user_id, provider)
 ```
 
-A field is **resolved** when `confirmed || skipped`. Sync is gated on all
-seven fields being resolved (`useReviewState.resolvedCount === 7`).
+### RLS policy model
 
----
+Every table is scoped. Role checks route through `public.has_role(uuid, app_role)` (security-definer) to prevent recursive RLS evaluation.
 
-## Mocked vs. real
-
-### Real (don't reinvent)
-
-- **Routing** — React Router 6, all five routes wired in `src/App.tsx`.
-- **Page-level state & interactions** — confirm/skip toggles, summary
-  editing, modal open/close, voice-amendment recording timer, sync animation
-  progression, Sync Modal inline edits, "edited" badge logic.
-- **Persistence contract** — the two `localStorage` keys above. Reflects
-  reality across navigation.
-- **Demo state controls** — toggle loading/empty/error on Active Call,
-  Synced, and History pages.
-- **Toast notifications** — sonner, wired throughout.
-- **Design system** — HSL tokens in `index.css`, mapped through
-  `tailwind.config.ts`. Salesforce Lightning visual language.
-
-### Mocked (replace these to ship)
-
-| Mock | Where | Replace with |
+| Table | Read | Write |
 |---|---|---|
-| Zoom ingestion | Active Call page; "Drafted from Zoom" banner on Review | Real Zoom (or Gong/Meet) recording webhook → transcript pipeline |
-| AI drafting | `SEED_FIELDS`, `SEED_SUMMARY` in `data.ts` | LLM call (Lovable AI Gateway is the default path) returning the same `Field[]` shape |
-| Voice amendment transcription | `useReviewState.stopRecord` setTimeout | Real STT + diff against existing fields |
-| Salesforce write | `useReviewState.doSync` writes to localStorage | Salesforce REST API call; keep the `SyncedPayload` shape |
-| Verification | `verifyState` toggle on Synced page | Post-write read-back to confirm fields landed |
-| Sync error path | `simulateError` checkbox in Sync Modal | Real error handling + retry |
-| Manager pipeline view | `PipelinePushPreview` on Synced page | Real aggregated forecast component |
-| Drafts queue | `pulse:drafts` localStorage | Per-user backend store |
-| Auth / multi-user | Hardcoded "Jordan Reyes" avatar | Lovable Cloud auth (recommended) |
-| Date/time formatting | Pre-formatted strings everywhere | Real `Date` objects + a formatter |
-| Mock contacts/queue/history | `src/data/calls.ts` | API-backed lists |
-
-There is **no backend, no auth, no network layer** in this codebase. Every
-"async" thing you see is a `setTimeout`.
+| `calls` | owner OR team-manager (via `profiles.team_id`) OR admin | owner OR admin |
+| `call_fields` | inherits via `calls` parent | inherits via `calls` parent |
+| `call_briefs`, `call_sessions`, `call_timeline_items` | inherits via `calls` parent | inherits via `calls` parent |
+| `contacts` | owner OR admin | owner OR admin |
+| `meeting_integrations` | self OR admin | self OR admin |
+| `review_metrics` | self OR manager OR admin | self OR admin |
+| `profiles` | any authenticated user | self only |
+| `user_roles` | self OR admin | admin only |
 
 ---
 
-## What ships next (suggested order)
+## Edge Cases & Known Gaps
 
-1. **Stand up Lovable Cloud.** Replace the two localStorage reads/writes
-   with database calls. Smallest possible change, biggest correctness win.
-2. **Real LLM draft.** Swap `SEED_FIELDS` for a server call returning the
-   same shape. Keep the citations — they're the trust mechanic.
-3. **Real Salesforce write + verify.** Implement `doSync` against the
-   Salesforce REST API; light up the verification timeout state with real
-   read-back logic.
-4. **Auth.** Multi-user means the "Jordan Reyes" hardcode goes away and
-   `pulse:drafts` becomes per-user.
-5. **Real Zoom ingestion.** Webhook → transcript → draft pipeline. The
-   Active Call screen becomes the live state of that pipeline.
-6. **Manager dashboard.** Promote `PipelinePushPreview` from a stub into
-   a real route backed by aggregated data.
+### Handled correctly — tested and shipped
+
+**Offline scenarios.** Sticky `OfflineBanner` that adapts the `QueryErrorCard` to a `WifiOff` icon and disables Retry while disconnected, preventing users from hammering a dead network. On reconnect, `queryClient.invalidateQueries()` refetches stale data without a page reload.
+
+**Session expiry.** Centralized through a custom `pulse:auth-expired` event dispatched by both `AuthGate` (on `SIGNED_OUT` or failed `TOKEN_REFRESHED`) and the React Query `QueryCache` (on 401, `PGRST301`, or "jwt expired" messages). Users see a toast and redirect to `/auth`; no stale-session writes occur.
+
+**Database write failures.** Global `MutationCache.onError` handler toasts the error with a Retry action capable of re-running the exact failed mutation with original variables. Every mutation in the app — `useUpdateCallField`, `useSaveDraft`, `useSyncCall`, `useToggleIntegration` — flows through this pattern. No mutation fails silently.
+
+**Database read failures.** Shared `QueryErrorCard` component (full-card AlertCircle, "Couldn't reach Pulse" message, request ID, Retry button) renders on every screen that fetches data. Retry calls the hook's `refetch()` and disables itself while in flight.
+
+**Empty states.** Distinct and intentional. Today's Review Queue empty state ("Your queue is clear") differs from the brand-new-user state on Previous Calls ("You haven't reviewed any calls yet"). Filter-mismatch empty states on Previous Calls preserve the user's stats card; brand-new empty states hide it. Each empty state offers a relevant CTA rather than a dead end.
+
+**Loading skeletons.** Gated behind a 600ms minimum delay via `useDelayedFlag(..., 600)`, eliminating skeleton flash on fast or cached fetches. Manual `StateControls` overrides bypass the delay for demo inspection.
+
+**Cross-user data isolation.** Enforced at the database level via RLS, with the application UI rendering a "Call not found" state rather than a server error when RLS denies access. A direct devtools console query as `rep_b` against `rep_a`'s `call_fields` returns an empty array — verified.
+
+**Duplicate-write race conditions.** Sync flow uses an in-flight guard plus button-disable state, so rapid clicks on "Confirm & Sync" fire exactly one `update calls set status='synced'` request regardless of click count.
+
+### Known gaps — production blockers and refactor needs
+
+**Denormalized deal fields on `contacts`.** The `stage`, `amount_cents`, and `account_name` columns live on `contacts` for prototype convenience. In production, a contact can have multiple deals and a company can have multiple contacts; these need to split into separate `accounts` and `deals` tables with foreign-key relationships, with `contacts` reduced to person-level data only. **First schema refactor an engineer should plan for after the Salesforce integration ships.**
+
+**No audit log.** The `call_fields.original_value` column preserves the pre-edit AI draft, but there is no record of *who* edited a field, *when*, or whether they reverted. For any production deployment with compliance requirements (SOC 2, ISO 27001), this audit trail is non-negotiable. Add an `audit_log` table with `(id, table_name, row_id, field_name, old_value, new_value, changed_by, changed_at)` and a Postgres trigger on every mutation.
+
+**Brittle provider CHECK constraint.** `meeting_integrations.provider` enforces five values via a CHECK constraint. Adding a sixth provider requires a database migration. Production should either lift this to a `meeting_providers` lookup table or accept any string with format validation.
+
+**OAuth tokens are not stored.** The `meeting_integrations` table tracks connection status but not the credentials needed to actually fetch transcripts. A production version requires an encrypted token storage column (or, better, a separate `oauth_tokens` table referenced by foreign key) with proper key-rotation handling.
+
+**`review_metrics` has no aggregation job.** The table is currently populated only via prototype seed data; there is no automated aggregation. In production, this requires either a scheduled Postgres function running nightly or a real-time materialized view refreshed on `calls.status` transitions.
+
+**No rate limiting on mutations.** A misbehaving client could in principle hammer the database with rapid `useUpdateCallField` calls. Production needs either Supabase rate-limit policies or application-side throttling on the React Query mutations.
+
+**`owner_id` enforcement varies by mutation path.** `useMeetingIntegrations` reads `auth.uid()` at call time, but `useSaveDraft`, `useUpdateCallField`, and `useSyncCall` rely on the `owner_id` having been stamped at row creation. If a future feature ever lets one user modify another's call (e.g., a manager edit-on-behalf), the mutation paths will need explicit `owner_id` checks rather than relying on RLS to deny inappropriately scoped writes.
+
+### Untested but ship-blocking
+
+**`handle_new_user` trigger with mixed auth providers.** Tested with email/password signup but not with Google OAuth. Edge case: a user signs up with Google and then later tries to sign in with email/password using the same email address — current behavior is undefined. Needs test coverage before public launch.
+
+**Path component rollback on partial sync failure.** The Path lifecycle (`Call Ended → AI Drafted → Ready for Review → Fields Confirmed → Synced to Salesforce`) has been tested for the happy path, but not for partial failures where `status='synced'` writes succeed in Pulse but the (mocked) Salesforce write conceptually fails. When the Salesforce mock becomes real, this rollback path needs design.
+
+**`useDelayedFlag` skeleton race condition.** Tested for fast fetches and slow fetches independently, but not for fetches that resolve, error, and refetch within the 600ms window. Theoretical race where skeleton state could flicker. Low priority, but worth a unit test before real production traffic.
 
 ---
 
-## Known gaps
+## Repository Navigation
 
-| Gap | Impact | Where to fix |
+For an engineer who's just cloned the repo and wants to find their way around.
+
+### File structure
+
+```
+src/
+├── App.tsx                       # routes only
+├── main.tsx
+│
+├── components/
+│   ├── shell/                    # Cross-feature layout chrome
+│   │   ├── Shell.tsx             #   NavRail, TopBar, BreadcrumbTabs
+│   │   ├── StateControls.tsx     #   Demo state toggles + Skeleton
+│   │   ├── OfflineBanner.tsx     #   Online/offline detection
+│   │   └── QueryErrorCard.tsx    #   Shared error fallback
+│   └── ui/                       # shadcn/ui primitives
+│
+├── features/                     # Each folder is a self-contained screen
+│   ├── review/                   # /  — Review & Confirm (the HUB)
+│   │   ├── ReviewPage.tsx        #     display: composes the layout
+│   │   ├── useReviewState.ts     #     state + persistence
+│   │   ├── data.ts               #     types only (seed data removed)
+│   │   └── components/
+│   │       ├── SyncModal.tsx     #     overlay: edit-then-write
+│   │       └── ImportModal.tsx   #     overlay: bring an external transcript
+│   │
+│   ├── synced/                   # /calls/complete/:id  — Synced
+│   │   ├── SyncedPage.tsx        #     display
+│   │   └── useSyncedPayload.ts   #     reads what review wrote
+│   │
+│   ├── active-call/              # /calls/active
+│   │   └── ActiveCallPage.tsx
+│   ├── history/                  # /calls/history
+│   │   └── PreviousCallsPage.tsx
+│   ├── auth/                     # /auth + AuthGate
+│   │   ├── AuthPage.tsx
+│   │   └── AuthGate.tsx
+│   └── not-found/                # *
+│       └── NotFoundPage.tsx
+│
+├── lib/
+│   ├── queries.ts                # ALL React Query hooks for Supabase
+│   ├── authEvents.ts             # pulse:auth-expired event bus
+│   ├── useOnlineStatus.ts        # window.online/offline subscription
+│   └── useDelayedFlag.ts         # 600ms skeleton gating
+│
+├── hooks/                        # Generic hooks (use-toast, use-mobile)
+└── integrations/supabase/        # Supabase client + types
+
+supabase/
+└── migrations/                   # All schema migrations (review here first
+                                  # to understand the database evolution)
+```
+
+### Architectural rules
+
+These are conventions the codebase enforces. Breaking them tends to introduce bugs.
+
+- **Display is dumb.** Page components receive props and render. No network calls, no timers — those belong in hooks. If you need to fetch data on a page, add a hook to `src/lib/queries.ts` and call it from the page.
+- **State lives in `useXxxState` hooks.** `useReviewState` owns every field, draft, voice-amendment, and sync handler for `/`. Swapping the backend means rewriting one hook, not five screens.
+- **Data is a module, not a hook.** Shared types live in `features/<name>/data.ts` so they can be imported from anywhere without import cycles. Seed data has been removed from these files — they contain types only.
+- **Group by feature, not by type.** A new screen = a new folder under `features/` with its own page, hook, types, and any local components. Promote a component to `components/shell/` only if two features share it.
+- **Mutations flow through `MutationCache.onError`.** Every write should be a TanStack Query mutation, not a direct `supabase.from(...).update(...)` call from a component. The global error handler depends on this pattern.
+
+### Routes
+
+| Route | Component | Purpose |
 |---|---|---|
-| Sync to Salesforce hangs when syncing data | Sync modal can stall; no timeout recovery or user-facing error state in the UI mock | Replace `useReviewState.doSync` timeout with real Salesforce REST call + robust error + retry handling |
+| `/` | `ReviewPage` | Review & Confirm 7 fields — the hub |
+| `/auth` | `AuthPage` | Sign in / sign up / Google OAuth |
+| `/calls/active` | `ActiveCallPage` | Pre-call brief during a live Zoom |
+| `/calls/complete/:id` | `SyncedPage` | Post-sync confirmation, also doubles as read-only history view |
+| `/calls/history` | `PreviousCallsPage` | Searchable archive of synced calls |
+| `*` | `NotFoundPage` | Fallback |
+
+### Running locally
+
+```bash
+npm install
+npm run dev
+```
+
+The app will redirect any unauthenticated route to `/auth`. Create a test account (use `+pulse` in the email address for easy filtering: `you+pulse@yourdomain.com`), verify the email, and you're in.
+
+To verify RLS isolation across users locally, sign up two test accounts and follow the verification procedure documented below in [Auth & access control verification](#auth--access-control-verification).
+
+### Auth & access control verification
+
+The README's RLS proof procedure, summarized:
+
+1. Sign up `rep_a@test.dev` and `rep_b@test.dev` from `/auth`. Each gets a `profiles` row + a `'rep'` row in `user_roles` via `handle_new_user`.
+2. Verify the email for both accounts.
+3. As `rep_a`, create at least one call (any insert via the app — `owner_id` is stamped from `auth.uid()`).
+4. As `rep_b`, open `/calls/history` — `rep_a`'s call must **not** appear.
+5. From the browser devtools console while signed in as `rep_b`, run:
+
+```javascript
+const { data, error } = await supabase
+  .from("call_fields")
+  .select("id, call_id, label, value");
+console.log({ data, error });
+```
+
+`data` must contain only rows from calls `rep_b` owns. `rep_a`'s rows are filtered by the `Call fields readable when parent call is` policy.
+
+### Programmatic checks in place
+
+- `supabase--linter` reports no critical findings. The one `WARN` on `has_role` is intentional and documented — `has_role` is the recursion-safe helper used by every policy.
+- `pg_policies` shows every `public.*` table is scoped by `auth.uid()`, `has_role(..., 'admin')`, or team-manager visibility via `profiles.team_id`. No `USING (true)` policies remain.
 
 ---
 
-## Gotchas
+## Cleanup Notes
 
-- **No `Date` objects.** Dates are formatted strings in mock data. When you
-  add real data, convert at the boundary, not in display components.
-- **`maya-chen` is hardcoded** in a few places (`STORAGE_KEYS.syncedMaya`,
-  `saveDraft`, redirect targets). Generalise these when the second call
-  becomes real.
-- **The Sync Modal owns its edits.** It receives confirmed fields as props,
-  tracks `edited` locally, and emits the final `SyncRow[]` only on confirm.
-  Don't try to sync edits back into `useReviewState` mid-flow.
-- **Path bar steps differ per page.** Active Call has 6 steps, Review has 5.
-  This is intentional — they represent the rep's progress, not a shared
-  state machine.
-- **`confirmAll` respects skips.** It only confirms fields that aren't
-  skipped. Don't "fix" this.
-- **Tokens are HSL.** Never write raw hex/rgb in components. If you need a
-  new color, add it to `index.css` and `tailwind.config.ts` first.
+A history of what was removed from the prototype during the M5 hardening pass, kept here so an engineer doesn't go looking for things that intentionally don't exist.
+
+- `src/data/calls.ts` has been removed. All call/queue/field data now flows through `src/lib/queries.ts` against Lovable Cloud.
+- The `Outcome` display union lives in `src/lib/queries.ts`.
+- Persona quotes from the Review screen prototype have moved into the README's "Research context" section. They are product positioning context, not runtime data, and should not be seeded into the database.
+- `PROTOTYPE_USER_ID` has been removed from `src/lib/queries.ts`. All user-scoped reads/writes now resolve `auth.uid()` at call time.
+
+---
+
+## Document History
+
+| Version | Date | Notes |
+|---|---|---|
+| v1.0 | Module 4 | Auto-generated handoff from Lovable's M4 Engineering Handoff prompt |
+| v2.0 | Module 5 | Merged with Functional Truth / Data Model / Edge Cases / Start Here sections after backend hardening |
+
+---
+
+## License
+
+Prototype — not licensed for production use. The framework, prompts, validation approach, and engineering patterns are free to adapt.
