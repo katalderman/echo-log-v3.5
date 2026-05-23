@@ -281,3 +281,13 @@ cite it back to this section.
   id + Retry) when the underlying Supabase query errors. Retry calls the
   hook's `refetch()` and disables itself while in flight. Never blanks the
   screen. See `src/components/shell/QueryErrorCard.tsx`.
+- **Empty states (reads)** —
+  - `/` Review queue with zero drafted calls renders "Your queue is clear"
+    with a "Go to Active Call" CTA, driven by `useCallsQueue().data.length`.
+  - `/calls/complete/:id` with no `call_fields` rows renders "This call
+    hasn't been drafted yet" with a "Run draft again" CTA (refetches the
+    payload).
+  - `/calls/history` with zero synced calls keeps the existing brand-new
+    "You haven't reviewed any calls yet" empty state, already wired to the
+    real `usePreviousCalls().data.length`.
+  - Search/filter zero-results on Previous Calls is preserved.
