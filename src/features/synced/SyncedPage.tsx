@@ -38,7 +38,7 @@ export default function SyncedPage() {
   }, [pipelineState]);
 
   // History mode = the underlying call row is already synced.
-  const { drafts, syncedPayload, call } = useSyncedPayload({ slug: id, isHistory: false });
+  const { drafts, syncedPayload, call, isError: syncedIsError, error: syncedError, isRefetching: syncedRefetching, refetch: refetchSynced } = useSyncedPayload({ slug: id, isHistory: false });
   const isHistory = call?.status === "synced" && id !== "maya-chen";
   const contact = call?.contact_name ?? "Maya Chen";
   const company = call?.company ?? "Northwind Robotics";
