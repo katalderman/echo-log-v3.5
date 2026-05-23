@@ -55,6 +55,8 @@ export default function ActiveCallPage() {
       ? "empty"
       : "normal";
 
+  const session = sessionQuery.data;
+  const brief = briefQuery.data;
   const dbError = briefState === "error";
   const zoomDropped = session?.status === "dropped";
 
