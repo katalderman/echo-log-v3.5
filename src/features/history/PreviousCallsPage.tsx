@@ -32,7 +32,7 @@ export default function PreviousCallsPage() {
   const [time, setTime] = useState("All");
   const [outcome, setOutcome] = useState<typeof OUTCOMES[number]>("All Outcomes");
   const [stateOverride, setStateOverride] = useState<ScreenState | "auto">("auto");
-  const [showErrorDetails, setShowErrorDetails] = useState(false);
+  
 
   const callsQuery = usePreviousCalls();
   const metricsQuery = useReviewMetrics();
