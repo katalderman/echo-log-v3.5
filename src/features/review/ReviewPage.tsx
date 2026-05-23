@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Phone, Search, ChevronRight, ChevronDown, X, Check, Pencil, Video, FileText, Upload, Link2,
   Mic, Square, Bold, Italic, Strikethrough, List, ListOrdered, AtSign,
   CheckCircle2, RefreshCw, Filter, Mail, ClipboardList,
-  StickyNote, Eye, Plus, Plug,
+  StickyNote, Eye, Plus, Plug, Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
@@ -12,6 +13,7 @@ import { Field, FieldKey, TIMELINE_GROUPS } from "./data";
 import { useReviewState } from "./useReviewState";
 import { SyncModal } from "./components/SyncModal";
 import { ImportModal } from "./components/ImportModal";
+import { useCallsQueue } from "@/lib/queries";
 
 /**
  * ReviewPage — the heart of the prototype.
@@ -22,6 +24,10 @@ import { ImportModal } from "./components/ImportModal";
  */
 export default function ReviewPage() {
   const r = useReviewState();
+  const navigate = useNavigate();
+  const queueQuery = useCallsQueue();
+  const queueEmpty =
+    !queueQuery.isLoading && !queueQuery.isError && (queueQuery.data ?? []).length === 0;
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
@@ -36,6 +42,24 @@ export default function ReviewPage() {
         <StatBanner onImport={() => r.setShowImport(true)} />
 
         <main className="flex-1 px-6 py-4 space-y-4">
+          {queueEmpty ? (
+            <div className="bg-card border border-border rounded px-6 py-16 text-center">
+              <div className="w-12 h-12 rounded-full bg-success/10 border border-success/30 grid place-items-center mx-auto mb-3">
+                <CheckCircle2 className="w-6 h-6 text-success" />
+              </div>
+              <div className="text-[16px] font-semibold">Your queue is clear</div>
+              <div className="text-[12px] text-muted-foreground mt-1 max-w-md mx-auto">
+                No calls awaiting review right now. When your next Zoom call ends, Pulse will draft fields and they'll show up here.
+              </div>
+              <button
+                onClick={() => navigate("/calls/active")}
+                className="mt-4 h-9 px-4 text-[12px] font-semibold bg-primary text-primary-foreground rounded hover:bg-primary/90 inline-flex items-center gap-1.5"
+              >
+                <Phone className="w-3.5 h-3.5" /> Go to Active Call
+              </button>
+            </div>
+          ) : (
+            <>
           <RecordHeader synced={r.synced} syncedAgo={r.syncedAgo} />
           <SourceBanner />
           <PathBar step={r.pathStep} />
@@ -107,6 +131,8 @@ export default function ReviewPage() {
               <PipelineReviewPreview synced={r.synced} />
             </div>
           </div>
+            </>
+          )}
         </main>
 
         <TodoFooter />
