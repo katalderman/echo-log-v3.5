@@ -23,7 +23,7 @@ export type Outcome = "Qualified" | "Booked" | "No Answer" | "Voicemail" | "Disc
  * Placeholder owner used by all seed rows and prototype mutations.
  * Replaced by `auth.uid()` when authentication lands.
  */
-export const PROTOTYPE_USER_ID = "00000000-0000-0000-0000-000000000001";
+
 
 /* ------------------------------------------------------------------ */
 /* Formatters — convert DB shapes into the display strings the UI uses */
