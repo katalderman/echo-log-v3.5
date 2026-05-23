@@ -275,3 +275,9 @@ cite it back to this section.
   signal (`pulse:auth-expired`) when any query returns a 401 / JWT error
   (`status === 401`, `code === "PGRST301"`, or a "jwt expired" message). See
   `src/lib/authEvents.ts` and `src/features/auth/AuthGate.tsx`.
+- **DB connection failure (reads)** — every React Query read on Review,
+  Active Call, Synced, and Previous Calls renders a shared
+  `QueryErrorCard` (full-card AlertCircle + "Couldn't reach Pulse" + request
+  id + Retry) when the underlying Supabase query errors. Retry calls the
+  hook's `refetch()` and disables itself while in flight. Never blanks the
+  screen. See `src/components/shell/QueryErrorCard.tsx`.
