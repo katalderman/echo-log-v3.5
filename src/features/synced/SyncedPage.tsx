@@ -222,7 +222,7 @@ export default function SyncedPage() {
                   retrying={syncedRefetching}
                 />
               )}
-              {!syncedIsError && (
+              {!syncedIsError && (<>
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-[13px] font-semibold flex items-center gap-2">
