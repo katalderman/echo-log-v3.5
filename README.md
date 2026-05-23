@@ -58,7 +58,7 @@ src/
 │   ├── review/                   # /  — Review & Confirm
 │   │   ├── ReviewPage.tsx        #     display: composes the layout
 │   │   ├── useReviewState.ts     #     state + persistence (the only hook)
-│   │   ├── data.ts               #     types, seed fields, storage keys
+│   │   ├── data.ts               #     types + fallback seed fields
 │   │   └── components/
 │   │       ├── SyncModal.tsx     #     overlay: edit-then-write
 │   │       └── ImportModal.tsx   #     overlay: bring an external transcript
@@ -82,56 +82,53 @@ src/
 ### Architectural rules
 
 - **Display is dumb.** Page components receive props and render. No
-  `localStorage`, no timers — those belong in hooks.
+  network calls, no timers — those belong in hooks.
 - **State lives in `useXxxState` hooks.** `useReviewState` owns every
   field, draft, voice-amendment, and sync handler for `/`. Swapping the
-  mock backend means rewriting one hook.
-- **Data is a module, not a hook.** Seeds, types, and `STORAGE_KEYS` live
-  in `features/<name>/data.ts` so they can be imported from anywhere
-  (e.g. `useSyncedPayload` reads what `useReviewState` wrote without a
-  shared parent).
+  backend means rewriting one hook.
+- **Data is a module, not a hook.** Shared types and fallback seeds
+  live in `features/<name>/data.ts` so they can be imported from
+  anywhere.
 - **Group by feature, not by type.** A new screen = a new folder under
   `features/` with its own page, hook, data, and any local components.
   Promote to `components/shell/` only if two features share it.
-
-### Persistence
-
-Two `localStorage` keys, both defined in `features/review/data.ts`:
-
-| Key                          | Written by         | Read by              |
-| ---------------------------- | ------------------ | -------------------- |
-| `pulse:drafts`               | `useReviewState`   | `useSyncedPayload`   |
-| `pulse:synced:maya-chen`     | `useReviewState`   | `useSyncedPayload`   |
-
-This is the contract that lets the Synced screen reflect *what actually
-happened* on Review (edits, skips) instead of a canned snapshot.
 
 ---
 
 ## Data layer
 
-Read paths for the **Previous Calls** and **Active Call** screens are
-backed by Lovable Cloud (Supabase). All read hooks live in
-`src/lib/queries.ts`:
+Read **and** write paths are backed by Lovable Cloud (Supabase). All
+hooks live in `src/lib/queries.ts`:
 
-| Hook                  | Reads from                |
-| --------------------- | ------------------------- |
-| `useCallsQueue()`     | `calls` (in-review/drafted) |
-| `usePreviousCalls()`  | `calls` (synced)          |
-| `useCall(slug)`       | `calls` by slug           |
-| `useCallFields(id)`   | `call_fields`             |
-| `useCallBrief(id)`    | `call_briefs`             |
-| `useCallTimeline(id)` | `call_timeline_items`     |
-| `useCallSession(id)`  | `call_sessions`           |
-| `useReviewMetrics()`  | `review_metrics`          |
+| Hook                          | Reads / writes                              |
+| ----------------------------- | ------------------------------------------- |
+| `useCallsQueue()`             | `calls` (in_review / drafted / draft_saved) |
+| `usePreviousCalls()`          | `calls` (synced)                            |
+| `useDraftCalls()`             | `calls` (drafted / draft_saved)             |
+| `useCall(slug)`               | `calls` by slug                             |
+| `useCallFields(id)`           | `call_fields`                               |
+| `useCallBrief(id)`            | `call_briefs`                               |
+| `useCallTimeline(id)`         | `call_timeline_items`                       |
+| `useCallSession(id)`          | `call_sessions`                             |
+| `useReviewMetrics()`          | `review_metrics`                            |
+| `useUpdateCallField(callId)`  | updates one `call_fields` row               |
+| `useSaveDraft()`              | sets `calls.status = 'draft_saved'`         |
+| `useSyncCall()`               | persists edits and sets `calls.status = 'synced'` |
 
-Pages render real loading/error/empty states off the React Query
-status. The `StateControls` widget remains as a demo override that lets
-you preview any state on top of the live data.
+`useReviewState` mirrors `call_fields` into local state so confirm /
+skip / edit / voice-amendment interactions stay instant, then fires
+mutations through the hooks above. The Sync modal hands the final row
+set to `useSyncCall`, which writes per-field edits and flips the call
+to `synced` in one transaction-shaped batch.
 
-The **Review & Confirm** write path (`useReviewState`,
-`useSyncedPayload`) still uses `localStorage` — migration to the
-database is the next planned commit.
+`useSyncedPayload` reads the post-sync rows back from `call_fields`
+(plus drafts from `useDraftCalls`) so the Synced screen reflects
+*what actually happened* — edits, skips, and the saved summary — with
+no `localStorage` in the loop.
+
+Pages render real loading/error/empty states off React Query status.
+The `StateControls` widget remains as a demo override that lets you
+preview any state on top of the live data.
 
 ---
 
@@ -167,6 +164,4 @@ Before shipping:
 2. Replace the open RLS policies with policies scoped to
    `owner_id = auth.uid()` (and equivalent joins for child tables).
 3. Set `owner_id` on insert from the authenticated user.
-4. Migrate the remaining `localStorage` reads/writes in `useReviewState`
-   and `useSyncedPayload` over to the database.
 
