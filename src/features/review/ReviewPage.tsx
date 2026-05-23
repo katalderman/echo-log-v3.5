@@ -44,6 +44,16 @@ export default function ReviewPage() {
             <div className="col-span-3"><AboutCard /></div>
 
             <div className="col-span-6 space-y-4">
+              {r.isError ? (
+                <QueryErrorCard
+                  title="Couldn't reach Pulse"
+                  message="We couldn't load this call's drafted fields. Nothing you've reviewed is lost — try again."
+                  error={r.error}
+                  onRetry={r.refetch}
+                  retrying={r.isRefetching}
+                />
+              ) : (
+                <>
               <CenterHeader
                 synced={r.synced}
                 confirmedCount={r.confirmedCount}
@@ -88,6 +98,8 @@ export default function ReviewPage() {
                 onApply={r.applyVoice}
                 onDiscard={r.discardVoice}
               />
+                </>
+              )}
             </div>
 
             <div className="col-span-3 space-y-4">
