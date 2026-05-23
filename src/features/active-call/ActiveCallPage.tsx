@@ -55,9 +55,15 @@ export default function ActiveCallPage() {
       ? "empty"
       : "normal";
 
-  const session = sessionQuery.data;
-  const brief = briefQuery.data;
-  const zoomDropped = briefState === "error" || session?.status === "dropped";
+  const dbError = briefState === "error";
+  const zoomDropped = session?.status === "dropped";
+
+  const retryAll = () => {
+    setStateOverride("auto");
+    callQuery.refetch();
+    briefQuery.refetch();
+    sessionQuery.refetch();
+  };
 
   // Elapsed: now - session.started_at (clamped to 0).
   const elapsed = useMemo(() => {
