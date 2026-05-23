@@ -213,6 +213,16 @@ export default function SyncedPage() {
             <div className="col-span-3"><AboutCard /></div>
 
             <div className="col-span-6 space-y-4">
+              {syncedIsError && (
+                <QueryErrorCard
+                  title="Couldn't reach Pulse"
+                  message="We couldn't load this synced call from the database. Your data isn't lost — try again."
+                  error={syncedError}
+                  onRetry={refetchSynced}
+                  retrying={syncedRefetching}
+                />
+              )}
+              {!syncedIsError && (
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-[13px] font-semibold flex items-center gap-2">
