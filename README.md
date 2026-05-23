@@ -185,11 +185,22 @@ table is now scoped to the authenticated user:
    and computed `initials`.
 2. Inserts `('user_id', 'rep')` into `user_roles`.
 
+### Sign-in flow
+
+- `/auth` is a single page that toggles between **Sign in** and **Sign up**
+  (email + password) and also offers **Continue with Google** via the
+  managed Lovable Cloud OAuth (`lovable.auth.signInWithOAuth("google")`).
+- `<AuthGate>` wraps the router. If there's no active session, every route
+  except `/auth` redirects to `/auth`. While the initial session loads we
+  render a minimal loading state.
+- Auto-confirm email is **off** — users verify their email before signing
+  in. Signup writes `display_name` into `auth.users.raw_user_meta_data`
+  so the `handle_new_user` trigger picks it up.
+
 ### Remaining work (next commits)
 
-1. **Commit 2** — `/auth` route (email+password + Google), `<AuthGate>` wrapper.
-2. **Commit 3** — TopBar profile + sign-out, `owner_id = auth.uid()` on all writes.
-3. **Commit 4** — Two-account RLS verification.
+1. **Commit 3** — TopBar profile + sign-out, `owner_id = auth.uid()` on all writes.
+2. **Commit 4** — Two-account RLS verification.
 
 
 
