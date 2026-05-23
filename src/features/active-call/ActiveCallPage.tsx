@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
 import { StateControls, Skeleton, ScreenState } from "@/components/shell/StateControls";
+import { QueryErrorCard } from "@/components/shell/QueryErrorCard";
 import { cn } from "@/lib/utils";
 import { useCall, useCallBrief, useCallSession } from "@/lib/queries";
 
