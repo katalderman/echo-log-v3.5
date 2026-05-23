@@ -1,15 +1,32 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Calendar, Check, FileText, FileUp, Plug, Search, Upload, X } from "lucide-react";
+import { Calendar, Check, FileText, FileUp, Loader2, Plug, Search, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  useMeetingIntegrations,
+  useToggleIntegration,
+  type MeetingProvider,
+} from "@/lib/queries";
 
 type Props = { onClose: () => void };
+
+/** Display order + labels for the Connect Source grid. */
+const PROVIDERS: { key: MeetingProvider; label: string }[] = [
+  { key: "zoom", label: "Zoom" },
+  { key: "teams", label: "Teams" },
+  { key: "google_meet", label: "Google Meet" },
+  { key: "granola", label: "Granola" },
+  { key: "otter", label: "Otter" },
+];
 
 /** ImportModal — bring an external transcript into Pulse for drafting. */
 export function ImportModal({ onClose }: Props) {
   const [tab, setTab] = useState<"paste" | "upload" | "connect">("paste");
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  const integrations = useMeetingIntegrations();
+  const toggle = useToggleIntegration();
 
   useEffect(() => {
     if (!processing) return;
@@ -28,13 +45,18 @@ export function ImportModal({ onClose }: Props) {
     }
   }, [progress, onClose]);
 
-  const sources = [
-    { name: "Zoom", connected: true },
-    { name: "Teams", connected: false },
-    { name: "Google Meet", connected: false },
-    { name: "Granola", connected: false },
-    { name: "Otter", connected: false },
-  ];
+  const isConnected = (p: MeetingProvider) =>
+    integrations.data?.some((row) => row.provider === p && row.status === "connected") ?? false;
+
+  const handleConnect = (p: MeetingProvider, label: string) => {
+    toggle.mutate(
+      { provider: p, connect: true },
+      {
+        onSuccess: () => toast.success(`${label} connected`),
+        onError: () => toast.error(`Couldn't connect ${label} — please try again.`),
+      },
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 grid place-items-center px-4 py-8">
@@ -93,16 +115,28 @@ export function ImportModal({ onClose }: Props) {
               )}
               {tab === "connect" && (
                 <div className="grid grid-cols-3 gap-2">
-                  {sources.map((s) => (
-                    <div key={s.name} className="border border-border rounded p-3 text-center">
-                      <div className="text-[12px] font-medium mb-2">{s.name}</div>
-                      {s.connected ? (
-                        <div className="text-[11px] text-success flex items-center justify-center gap-1"><Check className="w-3 h-3" /> Connected</div>
-                      ) : (
-                        <button className="h-7 px-2 text-[11px] border border-primary text-primary rounded hover:bg-primary/5">Connect</button>
-                      )}
-                    </div>
-                  ))}
+                  {PROVIDERS.map((p) => {
+                    const connected = isConnected(p.key);
+                    const pending = toggle.isPending && toggle.variables?.provider === p.key;
+                    return (
+                      <div key={p.key} className="border border-border rounded p-3 text-center">
+                        <div className="text-[12px] font-medium mb-2">{p.label}</div>
+                        {connected ? (
+                          <div className="text-[11px] text-success flex items-center justify-center gap-1">
+                            <Check className="w-3 h-3" /> Connected
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleConnect(p.key, p.label)}
+                            disabled={pending || integrations.isLoading}
+                            className="h-7 px-2 text-[11px] border border-primary text-primary rounded hover:bg-primary/5 disabled:opacity-50 inline-flex items-center gap-1"
+                          >
+                            {pending && <Loader2 className="w-3 h-3 animate-spin" />} Connect
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 

@@ -13,6 +13,14 @@ export type CallBriefRow = Database["public"]["Tables"]["call_briefs"]["Row"];
 export type CallSessionRow = Database["public"]["Tables"]["call_sessions"]["Row"];
 export type CallTimelineItemRow = Database["public"]["Tables"]["call_timeline_items"]["Row"];
 export type ReviewMetricsRow = Database["public"]["Tables"]["review_metrics"]["Row"];
+export type MeetingIntegrationRow = Database["public"]["Tables"]["meeting_integrations"]["Row"];
+export type MeetingProvider = Database["public"]["Enums"]["meeting_provider"];
+
+/**
+ * Placeholder owner used by all seed rows and prototype mutations.
+ * Replaced by `auth.uid()` when authentication lands.
+ */
+export const PROTOTYPE_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 /* ------------------------------------------------------------------ */
 /* Formatters — convert DB shapes into the display strings the UI uses */
@@ -284,6 +292,50 @@ export function useSyncCall() {
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["calls"] });
       qc.invalidateQueries({ queryKey: ["call_fields", vars.callId] });
+    },
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Meeting integrations (Import modal)                                 */
+/* ------------------------------------------------------------------ */
+
+/** All meeting integrations for the current (placeholder) user. */
+export function useMeetingIntegrations() {
+  return useQuery({
+    queryKey: ["meeting_integrations"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("meeting_integrations")
+        .select("*")
+        .eq("user_id", PROTOTYPE_USER_ID);
+      if (error) throw error;
+      return data as MeetingIntegrationRow[];
+    },
+  });
+}
+
+/** Connect / disconnect a single provider. Upserts on (user_id, provider). */
+export function useToggleIntegration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { provider: MeetingProvider; connect: boolean }) => {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("meeting_integrations")
+        .upsert(
+          {
+            user_id: PROTOTYPE_USER_ID,
+            provider: input.provider,
+            status: input.connect ? "connected" : "disconnected",
+            connected_at: input.connect ? now : null,
+          },
+          { onConflict: "user_id,provider" },
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["meeting_integrations"] });
     },
   });
 }
