@@ -167,3 +167,25 @@ Before shipping:
    `owner_id = auth.uid()` (and equivalent joins for child tables).
 3. Set `owner_id` on insert from the authenticated user.
 
+
+---
+
+## Research context
+
+Customer-interview quotes that shape Pulse's positioning. These are **product
+context, not runtime data** — they do not live in the database and should not
+be seeded. If a quote needs to appear in the UI, treat it as static copy and
+cite it back to this section.
+
+> "Zoom already gives me a summary. Why am I retyping it into Salesforce?"
+> — Senior AE, customer interview
+
+---
+
+## Cleanup notes
+
+- `src/data/calls.ts` has been removed. All call/queue/field data now flows
+  through `src/lib/queries.ts` against Lovable Cloud.
+- The `Outcome` display union lives in `src/lib/queries.ts`.
+- Persona quotes from the Review screen prototype have moved into the
+  "Research context" section above.

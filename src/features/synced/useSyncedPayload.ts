@@ -61,16 +61,17 @@ export function useSyncedPayload(opts: { slug: string | undefined; isHistory: bo
     .filter((r) => r.skipped)
     .map((r) => ({ key: r.field_key, label: r.label, value: r.value }));
 
-  const hasPayload = syncedFields.length > 0 || skippedFields.length > 0;
-
-  const syncedPayload: SyncedPayloadView | null = !opts.isHistory && hasPayload
-    ? {
-        summary: callQuery.data?.summary ?? null,
-        syncedFields,
-        skippedFields,
-        syncedAt: callQuery.data?.synced_at ?? null,
-      }
-    : null;
+  // Always return the payload; the caller renders whatever exists in the DB.
+  // History rows that were never reviewed will simply render zero fields.
+  const syncedPayload: SyncedPayloadView | null =
+    syncedFields.length > 0 || skippedFields.length > 0
+      ? {
+          summary: callQuery.data?.summary ?? null,
+          syncedFields,
+          skippedFields,
+          syncedAt: callQuery.data?.synced_at ?? null,
+        }
+      : null;
 
   const drafts: DraftView[] = (draftsQuery.data ?? []).map((c) => ({
     id: c.slug ?? c.id,

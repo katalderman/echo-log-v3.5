@@ -4,8 +4,8 @@ import { Search, Phone, Mail, Filter, Check, TrendingUp, Clock, Award, AlertCirc
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
 import { StateControls, Skeleton, ScreenState } from "@/components/shell/StateControls";
 import { cn } from "@/lib/utils";
-import { Outcome } from "@/data/calls";
 import {
+  Outcome,
   usePreviousCalls,
   useReviewMetrics,
   formatCallDate,

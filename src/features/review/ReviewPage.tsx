@@ -3,7 +3,7 @@ import {
   Phone, Search, ChevronRight, ChevronDown, X, Check, Pencil, Video, FileText, Upload, Link2,
   Mic, Square, Bold, Italic, Strikethrough, List, ListOrdered, AtSign,
   CheckCircle2, RefreshCw, Filter, Mail, ClipboardList,
-  StickyNote, Quote, Eye, Plus, Plug,
+  StickyNote, Eye, Plus, Plug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
@@ -348,13 +348,6 @@ function SummaryBlock({ summary, setSummary, editing, setEditing, reviewed, setR
 }) {
   return (
     <div className="space-y-2">
-      <div className="bg-info border border-info-border rounded p-3 flex gap-3">
-        <Quote className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-        <div>
-          <div className="text-[13px] italic">"Zoom already gives me a summary. Why am I retyping it into Salesforce?"</div>
-          <div className="text-[11px] text-muted-foreground mt-1">— Senior AE, customer interview</div>
-        </div>
-      </div>
       <div
         className={cn(
           "bg-card border rounded p-3 transition-colors cursor-text",

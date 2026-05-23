@@ -1,7 +1,7 @@
 /**
- * Read hooks backed by Lovable Cloud.
- * Replaces the hardcoded seed exports in src/data/calls.ts and
- * src/features/review/data.ts. Write paths are migrated in a later commit.
+ * Read + write hooks backed by Lovable Cloud.
+ * Replaces all hardcoded seed data that used to live in src/data/calls.ts
+ * and src/features/review/data.ts.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,9 @@ export type CallTimelineItemRow = Database["public"]["Tables"]["call_timeline_it
 export type ReviewMetricsRow = Database["public"]["Tables"]["review_metrics"]["Row"];
 export type MeetingIntegrationRow = Database["public"]["Tables"]["meeting_integrations"]["Row"];
 export type MeetingProvider = Database["public"]["Enums"]["meeting_provider"];
+
+/** Display-side outcome union, mirrored from the `call_outcome` enum. */
+export type Outcome = "Qualified" | "Booked" | "No Answer" | "Voicemail" | "Discovery" | "Lost";
 
 /**
  * Placeholder owner used by all seed rows and prototype mutations.
