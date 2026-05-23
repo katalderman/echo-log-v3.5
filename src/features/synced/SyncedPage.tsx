@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { NavRail, TopBar, BreadcrumbTabs } from "@/components/shell/Shell";
 import { StateControls, Skeleton, ScreenState } from "@/components/shell/StateControls";
+import { QueryErrorCard } from "@/components/shell/QueryErrorCard";
 import { cn } from "@/lib/utils";
 import { useSyncedPayload } from "./useSyncedPayload";
 import { formatSyncedAt, useCallsQueue, formatDuration, formatCallDate } from "@/lib/queries";
@@ -38,7 +39,7 @@ export default function SyncedPage() {
   }, [pipelineState]);
 
   // History mode = the underlying call row is already synced.
-  const { drafts, syncedPayload, call } = useSyncedPayload({ slug: id, isHistory: false });
+  const { drafts, syncedPayload, call, isError: syncedIsError, error: syncedError, isRefetching: syncedRefetching, refetch: refetchSynced } = useSyncedPayload({ slug: id, isHistory: false });
   const isHistory = call?.status === "synced" && id !== "maya-chen";
   const contact = call?.contact_name ?? "Maya Chen";
   const company = call?.company ?? "Northwind Robotics";
@@ -212,6 +213,16 @@ export default function SyncedPage() {
             <div className="col-span-3"><AboutCard /></div>
 
             <div className="col-span-6 space-y-4">
+              {syncedIsError && (
+                <QueryErrorCard
+                  title="Couldn't reach Pulse"
+                  message="We couldn't load this synced call from the database. Your data isn't lost — try again."
+                  error={syncedError}
+                  onRetry={refetchSynced}
+                  retrying={syncedRefetching}
+                />
+              )}
+              {!syncedIsError && (<>
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-[13px] font-semibold flex items-center gap-2">
@@ -350,6 +361,7 @@ export default function SyncedPage() {
                   </div>
                 </div>
               )}
+              </>)}
             </div>
 
             {/* Right: Pipeline preview */}

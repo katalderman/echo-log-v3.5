@@ -304,5 +304,13 @@ export function useReviewState() {
     discardVoice,
     saveDraft,
     doSync,
+    // remote-fetch surface
+    isError: callQuery.isError || fieldsQuery.isError,
+    error: callQuery.error ?? fieldsQuery.error ?? null,
+    isRefetching: callQuery.isRefetching || fieldsQuery.isRefetching,
+    refetch: () => {
+      callQuery.refetch();
+      fieldsQuery.refetch();
+    },
   };
 }

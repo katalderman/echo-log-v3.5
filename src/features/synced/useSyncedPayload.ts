@@ -83,5 +83,17 @@ export function useSyncedPayload(opts: { slug: string | undefined; isHistory: bo
     fieldsTotal: c.fields_total,
   }));
 
-  return { drafts, syncedPayload, call: callQuery.data ?? null };
+  return {
+    drafts,
+    syncedPayload,
+    call: callQuery.data ?? null,
+    isLoading: callQuery.isLoading || fieldsQuery.isLoading,
+    isError: callQuery.isError || fieldsQuery.isError,
+    error: callQuery.error ?? fieldsQuery.error ?? null,
+    isRefetching: callQuery.isRefetching || fieldsQuery.isRefetching,
+    refetch: () => {
+      callQuery.refetch();
+      fieldsQuery.refetch();
+    },
+  };
 }
